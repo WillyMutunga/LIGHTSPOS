@@ -282,7 +282,7 @@ export default function App() {
     );
   }
 
-  const renderPwaBanner = () => {
+  function renderPwaBanner() {
     if (!showInstallBanner) return null;
     return (
       <div className="pwa-banner">
