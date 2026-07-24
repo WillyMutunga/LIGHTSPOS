@@ -101,8 +101,9 @@ export default function SalesHistoryModule() {
       {/* Receipt Modal Overlay */}
       {selectedSale && (
         <div className="cyber-modal-overlay">
-          <div className="cyber-modal" style={{ maxWidth: '400px', background: '#FFFFFF', color: '#111111', border: '1px solid #111111', boxShadow: 'none' }}>
+          <div className="cyber-modal" style={{ maxWidth: '400px', background: '#FFFFFF', color: '#111111', border: '1px solid #111111', boxShadow: 'none', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
             {/* Header info */}
             <div style={{ textAlign: 'center', borderBottom: '1px dashed #111111', paddingBottom: '1rem', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>Lights Electricals & Electronics</h2>
@@ -193,28 +194,34 @@ export default function SalesHistoryModule() {
               </div>
             )}
 
-            {/* Receipt Footer */}
-            <div style={{ textAlign: 'center', fontSize: '0.75rem', borderTop: '1px dashed #111111', paddingTop: '0.5rem' }}>
-              <p>Thank you for shopping with us!</p>
-              <p>Goods once sold are not returnable</p>
-              <p>unless found defective within 7 days.</p>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-                <button 
-                  className="cyber-button"
-                  style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
-                  onClick={() => window.print()}
-                >
-                  <Printer size={14} /> Print
-                </button>
-                <button 
-                  className="cyber-button btn-orange" 
-                  style={{ flex: 1, background: '#111111', color: '#FFFFFF', borderColor: '#111111', justifyContent: 'center' }}
-                  onClick={() => setSelectedSale(null)}
-                >
-                  Close [Esc]
-                </button>
+
+              {/* Receipt Footer */}
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', borderTop: '1px dashed #111111', paddingTop: '0.5rem' }}>
+                <p>Thank you for shopping with us!</p>
+                <p>Goods once sold are not returnable</p>
+                <p>unless found defective within 7 days.</p>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
+                  <button 
+                    className="cyber-button"
+                    style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
+                    onClick={() => window.print()}
+                  >
+                    <Printer size={14} /> Print
+                  </button>
+                </div>
               </div>
+            </div> {/* End scrollable area */}
+
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDDDD' }}>
+              <button 
+                type="button"
+                className="cyber-button btn-orange" 
+                style={{ background: '#111111', color: '#FFFFFF', borderColor: '#111111', width: '100%', justifyContent: 'center', padding: '0.75rem' }}
+                onClick={() => setSelectedSale(null)}
+              >
+                Close Receipt [Esc]
+              </button>
             </div>
 
           </div>
