@@ -333,3 +333,10 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* iPhone Safari Specific Fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) { 
+  input, select, textarea, .cyber-input {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS */
+  }
+}
