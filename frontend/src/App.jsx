@@ -271,10 +271,6 @@ export default function App() {
             </div>
           </form>
 
-          {/* Quick instructions */}
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-            Demo: Cashier PIN <strong style={{ color: 'var(--accent-cyan)' }}>1234</strong> | Manager PIN <strong style={{ color: 'var(--accent-cyan)' }}>5555</strong>
-          </div>
         </div>
       </div>
       {renderPwaBanner()}
