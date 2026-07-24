@@ -1,0 +1,17 @@
+{
+  "short_name": "Lights POS",
+  "name": "Lights Electricals and Electronics POS",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#070D19",
+  "theme_color": "#00F0FF",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
