@@ -342,7 +342,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden' }}>
         
         {/* Scanner and Search Area */}
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="pos-search-container" style={{ display: 'flex', gap: '1rem' }}>
           <form onSubmit={handleBarcodeSubmit} style={{ flex: 1, position: 'relative' }}>
             <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
               <ShoppingCart size={18} />

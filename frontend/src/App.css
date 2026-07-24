@@ -308,3 +308,41 @@
     padding-bottom: 50px !important;
   }
 }
+
+/* Precise Mobile UI Arrangements */
+@media (max-width: 768px) {
+  /* Fix Header Squishing */
+  .app-header {
+    flex-wrap: wrap;
+    height: auto !important;
+    padding: 0.5rem 1rem !important;
+  }
+  .app-header .cyber-title {
+    font-size: 0.95rem !important;
+    text-align: left;
+    flex: 1;
+  }
+  /* The User Info box inside header */
+  .app-header > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-muted);
+  }
+
+  /* Fix POS Search Bar stacking */
+  .pos-search-container {
+    flex-direction: column;
+    gap: 0.5rem !important;
+  }
+
+  /* Fix Footer Wrapping */
+  .app-footer {
+    height: auto !important;
+    flex-direction: column;
+    padding: 0.5rem !important;
+    gap: 0.25rem;
+    text-align: center;
+  }
+}
