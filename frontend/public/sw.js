@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lights-pos-v3';
+const CACHE_NAME = 'lights-pos-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -34,24 +34,39 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event (Offline Fallback Strategy)
+// Fetch Event (Network First for HTML, Cache First for assets)
 self.addEventListener('fetch', (event) => {
   // Only handle local/same-origin GET requests
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
+  // For HTML navigation requests (loading the page), try the network first!
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        // Successfully fetched from network, update the cache with the new HTML
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        // If offline, fallback to the cached HTML
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/');
+        });
+      })
+    );
+    return;
+  }
+
+  // For all other requests (JS, CSS, Images), use Cache First, fallback to Network
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => {
-        // Offline fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+      return fetch(event.request);
     })
   );
 });
