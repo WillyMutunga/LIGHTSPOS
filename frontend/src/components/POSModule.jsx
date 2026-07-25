@@ -604,7 +604,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
             {/* Payment Method Selector */}
             <div style={{ marginBottom: '1rem' }}>
               <label className="cyber-label">Payment Mode</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.4rem' }}>
                 <button
                   type="button"
                   className={`cyber-button ${paymentMethod === 'Cash' ? 'btn-lime' : ''}`}
