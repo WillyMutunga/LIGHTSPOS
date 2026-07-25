@@ -6,6 +6,7 @@ export default function ReportsModule() {
   const [reportType, setReportType] = useState('sales');
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     setReportData(null);
@@ -15,9 +16,19 @@ export default function ReportsModule() {
   const loadReport = async () => {
     setLoading(true);
     try {
-      if (reportType === 'sales') {
+      if (reportType === 'sales' || reportType === 'cashier_daily') {
         const sales = await api.getSales();
-        setReportData(sales);
+        if (reportType === 'cashier_daily') {
+           // Filter for today's sales by current user
+           const today = new Date().toLocaleDateString();
+           const filtered = sales.filter(s => {
+               const sDate = new Date(s.timestamp).toLocaleDateString();
+               return sDate === today && s.cashier === currentUser.id;
+           });
+           setReportData(filtered);
+        } else {
+           setReportData(sales);
+        }
       } else if (reportType === 'inventory') {
         const products = await api.getProducts();
         setReportData(products);
@@ -57,12 +68,18 @@ export default function ReportsModule() {
       </div>
 
       {/* Selectors */}
-      <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+      <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)', flexWrap: 'wrap' }}>
         <button 
           className={`cyber-button ${reportType === 'sales' ? 'btn-lime' : ''}`}
           onClick={() => setReportType('sales')}
         >
           Sales Transactions
+        </button>
+        <button 
+          className={`cyber-button ${reportType === 'cashier_daily' ? 'btn-lime' : ''}`}
+          onClick={() => setReportType('cashier_daily')}
+        >
+          My Daily Z-Report
         </button>
         <button 
           className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
