@@ -3,10 +3,10 @@ import { api } from '../api';
 import { FileText, Printer, ShieldCheck, Download } from 'lucide-react';
 
 export default function ReportsModule() {
-  const [reportType, setReportType] = useState('sales');
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const [reportType, setReportType] = useState(currentUser.role === 'admin' ? 'sales' : 'cashier_daily');
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     setReportData(null);
@@ -67,39 +67,48 @@ export default function ReportsModule() {
         </div>
       </div>
 
-      {/* Selectors */}
-      <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)', flexWrap: 'wrap' }}>
-        <button 
-          className={`cyber-button ${reportType === 'sales' ? 'btn-lime' : ''}`}
-          onClick={() => setReportType('sales')}
-        >
-          Sales Transactions
-        </button>
-        <button 
-          className={`cyber-button ${reportType === 'cashier_daily' ? 'btn-lime' : ''}`}
-          onClick={() => setReportType('cashier_daily')}
-        >
-          My Daily Z-Report
-        </button>
-        <button 
-          className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
-          onClick={() => setReportType('inventory')}
-        >
-          Inventory Valuation
-        </button>
-        <button 
-          className={`cyber-button ${reportType === 'financial' ? 'btn-lime' : ''}`}
-          onClick={() => setReportType('financial')}
-        >
-          Profit & Loss Summary
-        </button>
-        <button 
-          className={`cyber-button ${reportType === 'shifts' ? 'btn-lime' : ''}`}
-          onClick={() => setReportType('shifts')}
-        >
-          Shifts & Cash Audits
-        </button>
-      </div>
+        {/* Selectors */}
+        <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)', flexWrap: 'wrap' }}>
+          
+          {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+            <button 
+              className={`cyber-button ${reportType === 'sales' ? 'btn-lime' : ''}`}
+              onClick={() => setReportType('sales')}
+            >
+              Sales Transactions
+            </button>
+          )}
+
+          <button 
+            className={`cyber-button ${reportType === 'cashier_daily' ? 'btn-lime' : ''}`}
+            onClick={() => setReportType('cashier_daily')}
+          >
+            My Daily Z-Report
+          </button>
+
+          {currentUser.role === 'admin' && (
+            <>
+              <button 
+                className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
+                onClick={() => setReportType('inventory')}
+              >
+                Inventory Valuation
+              </button>
+              <button 
+                className={`cyber-button ${reportType === 'financial' ? 'btn-lime' : ''}`}
+                onClick={() => setReportType('financial')}
+              >
+                Profit & Loss Summary
+              </button>
+              <button 
+                className={`cyber-button ${reportType === 'shifts' ? 'btn-lime' : ''}`}
+                onClick={() => setReportType('shifts')}
+              >
+                Shift Drawer Audits
+              </button>
+            </>
+          )}
+        </div>
 
       {/* Report Display Container */}
       <div className="cyber-card" style={{ flex: 1, overflowY: 'auto' }} id="printable-report-area">

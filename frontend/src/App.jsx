@@ -165,12 +165,12 @@ export default function App() {
     
     // Managers can access everything except Reports/Users/Settings
     if (role === 'manager') {
-      return !['reports', 'users', 'settings'].includes(view);
+      return !['users', 'settings'].includes(view);
     }
     
     // Cashiers can only access POS terminal, Customer list, Shifts, and general session lock
     if (role === 'cashier') {
-      return ['pos', 'customers', 'shifts', 'warranty'].includes(view);
+      return ['pos', 'customers', 'shifts', 'warranty', 'reports'].includes(view);
     }
     
     return false;
