@@ -12,6 +12,6 @@ def run_migrations(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/run-secret-migrations-willy-123/', run_migrations),
+    path('run-secret-migrations-willy-123/', run_migrations),
     path('', include('store.urls')),
 ]
