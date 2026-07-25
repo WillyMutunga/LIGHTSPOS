@@ -30,6 +30,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     cost_price = models.DecimalField(max_digits=10, decimal_places=2)
     retail_price = models.DecimalField(max_digits=10, decimal_places=2)
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     stock_quantity = models.IntegerField(default=0)
     serial_tracked = models.BooleanField(default=False)
     serial_numbers = models.TextField(blank=True, help_text="Comma-separated list of active serial numbers in stock")
@@ -109,10 +110,12 @@ class Sale(models.Model):
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=12, decimal_places=2)
-    payment_method = models.CharField(max_length=50) # M-Pesa, Cash, Card, Credit
+    payment_method = models.CharField(max_length=50) # M-Pesa, Cash, Card, Credit, Mixed
     payment_reference = models.CharField(max_length=100, blank=True)
     amount_tendered = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     change_due = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    mixed_cash_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    mixed_mpesa_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     etims_invoice_number = models.CharField(max_length=100, blank=True)
     etims_signature = models.CharField(max_length=100, blank=True)
     etims_qr_code_data = models.TextField(blank=True)

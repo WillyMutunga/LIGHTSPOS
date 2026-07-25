@@ -94,6 +94,7 @@ export default function ReportsModule() {
               <div>
                 <h3 className="cyber-title" style={{ fontSize: '1.2rem' }}>
                   {reportType === 'sales' && 'Sales Register Report'}
+                  {reportType === 'cashier_daily' && 'My Daily Z-Report (Shift Totals)'}
                   {reportType === 'inventory' && 'Stock Valuation Statement'}
                   {reportType === 'financial' && 'Income Statement (P&L)'}
                   {reportType === 'shifts' && 'Shift Drawer Audits'}
@@ -128,6 +129,69 @@ export default function ReportsModule() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Cashier Daily Z-Report */}
+            {reportType === 'cashier_daily' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '500px', margin: '0 auto', padding: '1rem', background: 'var(--bg-darker)', borderRadius: '4px' }}>
+                <h4 style={{ textAlign: 'center', marginBottom: '1rem', borderBottom: '1px dashed var(--border-muted)', paddingBottom: '1rem' }}>
+                  CASHIER SHIFT TOTALS<br/><br/>
+                  <span style={{color:'var(--accent-cyan)'}}>{currentUser.name}</span><br/>
+                  <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>{new Date().toLocaleDateString()}</span>
+                </h4>
+                
+                {(() => {
+                  if (!Array.isArray(reportData)) return null;
+                  
+                  let totalCash = 0;
+                  let totalMpesa = 0;
+                  let totalCard = 0;
+                  let totalCredit = 0;
+                  let grandTotal = 0;
+                  
+                  reportData.forEach(sale => {
+                     grandTotal += Number(sale.total);
+                     if (sale.payment_method === 'Cash') totalCash += Number(sale.total);
+                     if (sale.payment_method === 'M-Pesa') totalMpesa += Number(sale.total);
+                     if (sale.payment_method === 'Card') totalCard += Number(sale.total);
+                     if (sale.payment_method === 'Credit') totalCredit += Number(sale.total);
+                     if (sale.payment_method === 'Mixed') {
+                         totalCash += Number(sale.mixed_cash_amount || 0);
+                         totalMpesa += Number(sale.mixed_mpesa_amount || 0);
+                     }
+                  });
+
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Cash Collected:</span>
+                        <span className="currency">KES {totalCash.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>M-Pesa Collected:</span>
+                        <span className="currency">KES {totalMpesa.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Card Payments:</span>
+                        <span className="currency">KES {totalCard.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-muted)', paddingBottom: '0.5rem' }}>
+                        <span>Store Credit:</span>
+                        <span className="currency">KES {totalCredit.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--accent-cyan)', paddingBottom: '0.5rem', fontWeight: 'bold' }}>
+                        <span>Gross Shift Sales:</span>
+                        <span className="currency" style={{ color: 'var(--success-lime)', fontSize: '1.15rem' }}>
+                          KES {grandTotal.toLocaleString()}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem', justifyContent: 'center' }}>
+                        <span>Transactions: {reportData.length}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 

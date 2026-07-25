@@ -238,6 +238,8 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         amount_tendered = data.get('amount_tendered', 0)
         change_due = data.get('change_due', 0)
+        mixed_cash_amount = data.get('mixed_cash_amount', 0)
+        mixed_mpesa_amount = data.get('mixed_mpesa_amount', 0)
 
         # Create Sale
         sale = Sale.objects.create(
@@ -251,7 +253,9 @@ class SaleViewSet(viewsets.ModelViewSet):
             payment_method=payment_method,
             payment_reference=payment_reference,
             amount_tendered=decimal.Decimal(str(amount_tendered)),
-            change_due=decimal.Decimal(str(change_due))
+            change_due=decimal.Decimal(str(change_due)),
+            mixed_cash_amount=decimal.Decimal(str(mixed_cash_amount)),
+            mixed_mpesa_amount=decimal.Decimal(str(mixed_mpesa_amount))
         )
 
         # Handle Credit Ledger updates

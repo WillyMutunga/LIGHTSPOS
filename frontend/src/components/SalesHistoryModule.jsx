@@ -84,7 +84,7 @@ export default function SalesHistoryModule() {
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <button 
-                      className="cyber-button"
+                      className="cyber-button no-print"
                       style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
                       onClick={() => setSelectedSale(sale)}
                     >
@@ -203,7 +203,7 @@ export default function SalesHistoryModule() {
                 
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
                   <button 
-                    className="cyber-button"
+                    className="cyber-button no-print"
                     style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
                     onClick={() => window.print()}
                   >

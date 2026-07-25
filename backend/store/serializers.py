@@ -25,7 +25,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'barcode', 'name', 'description', 'category', 'category_name',
-            'cost_price', 'retail_price', 'stock_quantity', 'serial_tracked',
+            'cost_price', 'retail_price', 'wholesale_price', 'stock_quantity', 'serial_tracked',
             'serial_numbers'
         ]
 
@@ -73,6 +73,7 @@ class SaleSerializer(serializers.ModelSerializer):
             'id', 'shift', 'customer', 'customer_name', 'cashier', 'cashier_name',
             'timestamp', 'subtotal', 'discount', 'tax_amount', 'total',
             'payment_method', 'payment_reference', 'amount_tendered', 'change_due',
+            'mixed_cash_amount', 'mixed_mpesa_amount',
             'etims_invoice_number', 'etims_signature', 'etims_qr_code_data', 'items'
         ]
 

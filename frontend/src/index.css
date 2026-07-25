@@ -340,3 +340,51 @@ body {
     font-size: 16px !important; /* Prevents auto-zoom on iOS */
   }
 }
+
+/* Receipt Thermal Printing Mode */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .cyber-modal-overlay,
+  .cyber-modal,
+  .cyber-modal * {
+    visibility: visible;
+  }
+
+  .cyber-modal-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: transparent;
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  .cyber-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important; /* Standard thermal receipt width */
+    max-width: 80mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  
+  .cyber-modal > div:last-child {
+      display: none !important; /* Hide the Close Button row when printing */
+  }
+  
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

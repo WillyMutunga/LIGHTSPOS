@@ -13,6 +13,10 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerSearchInput, setCustomerSearchInput] = useState('');
+  const [pricingMode, setPricingMode] = useState('Retail');
+  const [mixedCashAmount, setMixedCashAmount] = useState('');
+  const [mixedMpesaAmount, setMixedMpesaAmount] = useState('');
   
   const [discountPercent, setDiscountPercent] = useState(0);
   const [taxRate, setTaxRate] = useState(16); // 16% VAT default
@@ -279,6 +283,9 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     }
 
     let tenderedVal = Number(amountTendered || 0);
+    let mixedCash = 0;
+    let mixedMpesa = 0;
+
     if (paymentMethod === 'Cash') {
       if (tenderedVal > 0 && tenderedVal < getTotal()) {
         alert("Tendered cash amount cannot be less than the grand total.");
@@ -288,6 +295,9 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       if (tenderedVal === 0) {
         tenderedVal = getTotal();
       }
+    } else if (paymentMethod === 'Mixed') {
+      // In POSModule, we'll store Mixed Cash in amountTendered and Mixed M-Pesa in a new state variable.
+      // But wait, we haven't added the new state variables yet. I will use `mixedCashAmount` and `mixedMpesaAmount`.
     }
 
     setIsProcessing(true);
@@ -513,19 +523,28 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
           <h3 className="cyber-title" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Customer Profile</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label className="cyber-label">Select Customer</label>
-              <select 
-                className="cyber-input" 
-                value={selectedCustomer ? selectedCustomer.id : ''}
+              <label className="cyber-label">Search Customer (Name or Phone)</label>
+              <input
+                type="text"
+                className="cyber-input"
+                list="customer-list"
+                placeholder="Type to search..."
+                value={customerSearchInput}
                 onChange={(e) => {
-                  const cust = customers.find(c => c.id === Number(e.target.value));
-                  setSelectedCustomer(cust || null);
+                  setCustomerSearchInput(e.target.value);
+                  const cust = customers.find(c => `${c.name} (${c.phone})` === e.target.value);
+                  if (cust) {
+                    setSelectedCustomer(cust);
+                  } else {
+                    setSelectedCustomer(null);
+                  }
                 }}
-              >
+              />
+              <datalist id="customer-list">
                 {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                  <option key={c.id} value={`${c.name} (${c.phone})`} />
                 ))}
-              </select>
+              </datalist>
             </div>
             
             {selectedCustomer && (
