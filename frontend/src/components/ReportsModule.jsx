@@ -5,29 +5,36 @@ import { FileText, Printer, ShieldCheck, Download } from 'lucide-react';
 export default function ReportsModule() {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const [reportType, setReportType] = useState(currentUser.role === 'admin' ? 'sales' : 'cashier_daily');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setReportData(null);
     loadReport();
-  }, [reportType]);
+  }, [reportType, selectedDate]);
 
   const loadReport = async () => {
     setLoading(true);
     try {
       if (reportType === 'sales' || reportType === 'cashier_daily') {
         const sales = await api.getSales();
+        const targetDate = new Date(selectedDate).toLocaleDateString();
+        
         if (reportType === 'cashier_daily') {
-           // Filter for today's sales by current user
-           const today = new Date().toLocaleDateString();
+           // Filter for selected date's sales by current user
            const filtered = sales.filter(s => {
                const sDate = new Date(s.timestamp).toLocaleDateString();
-               return sDate === today && s.cashier === currentUser.id;
+               return sDate === targetDate && s.cashier === currentUser.id;
            });
            setReportData(filtered);
         } else {
-           setReportData(sales);
+           // Filter all sales by selected date
+           const filtered = sales.filter(s => {
+               const sDate = new Date(s.timestamp).toLocaleDateString();
+               return sDate === targetDate;
+           });
+           setReportData(filtered);
         }
       } else if (reportType === 'inventory') {
         const products = await api.getProducts();
@@ -67,47 +74,59 @@ export default function ReportsModule() {
         </div>
       </div>
 
-        {/* Selectors */}
-        <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)', flexWrap: 'wrap' }}>
-          
-          {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+        {/* Selectors and Date Picker */}
+        <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border-muted)', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <button 
+                className={`cyber-button ${reportType === 'sales' ? 'btn-lime' : ''}`}
+                onClick={() => setReportType('sales')}
+              >
+                Sales Transactions
+              </button>
+            )}
+
             <button 
-              className={`cyber-button ${reportType === 'sales' ? 'btn-lime' : ''}`}
-              onClick={() => setReportType('sales')}
+              className={`cyber-button ${reportType === 'cashier_daily' ? 'btn-lime' : ''}`}
+              onClick={() => setReportType('cashier_daily')}
             >
-              Sales Transactions
+              My Daily Z-Report
             </button>
-          )}
 
-          <button 
-            className={`cyber-button ${reportType === 'cashier_daily' ? 'btn-lime' : ''}`}
-            onClick={() => setReportType('cashier_daily')}
-          >
-            My Daily Z-Report
-          </button>
-
-          {currentUser.role === 'admin' && (
-            <>
-              <button 
-                className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
-                onClick={() => setReportType('inventory')}
-              >
-                Inventory Valuation
-              </button>
-              <button 
-                className={`cyber-button ${reportType === 'financial' ? 'btn-lime' : ''}`}
-                onClick={() => setReportType('financial')}
-              >
-                Profit & Loss Summary
-              </button>
-              <button 
-                className={`cyber-button ${reportType === 'shifts' ? 'btn-lime' : ''}`}
-                onClick={() => setReportType('shifts')}
-              >
-                Shift Drawer Audits
-              </button>
-            </>
-          )}
+            {currentUser.role === 'admin' && (
+              <>
+                <button 
+                  className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
+                  onClick={() => setReportType('inventory')}
+                >
+                  Inventory Valuation
+                </button>
+                <button 
+                  className={`cyber-button ${reportType === 'financial' ? 'btn-lime' : ''}`}
+                  onClick={() => setReportType('financial')}
+                >
+                  Profit & Loss Summary
+                </button>
+                <button 
+                  className={`cyber-button ${reportType === 'shifts' ? 'btn-lime' : ''}`}
+                  onClick={() => setReportType('shifts')}
+                >
+                  Shift Drawer Audits
+                </button>
+              </>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label className="cyber-label" style={{ marginBottom: 0 }}>Report Date:</label>
+            <input 
+              type="date" 
+              className="cyber-input"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{ width: 'auto' }}
+            />
+          </div>
         </div>
 
       {/* Report Display Container */}
