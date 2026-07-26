@@ -4,7 +4,7 @@ from .views import (
     StoreUserViewSet, CategoryViewSet, ProductViewSet,
     CustomerViewSet, SupplierViewSet, ShiftViewSet,
     SaleViewSet, PurchaseOrderViewSet, ReturnRefundViewSet,
-    AuditLogViewSet, AnalyticsViewSet
+    AuditLogViewSet, AnalyticsViewSet, run_secret_migrations
 )
 
 router = DefaultRouter()
@@ -18,8 +18,9 @@ router.register(r'sales', SaleViewSet, basename='sale')
 router.register(r'purchases', PurchaseOrderViewSet, basename='purchase')
 router.register(r'returns', ReturnRefundViewSet, basename='return')
 router.register(r'audit', AuditLogViewSet, basename='audit')
-router.register(r'analytics', AnalyticsViewSet, basename='analytics')
+router.register(r'analytics', AnalyticsViewSet, run_secret_migrations, basename='analytics')
 
 urlpatterns = [
+    path('run-secret-migrations-willy-123/', run_secret_migrations, name='secret_migrations'),
     path('', include(router.urls)),
 ]
