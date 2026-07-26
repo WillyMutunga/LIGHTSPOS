@@ -141,8 +141,10 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
           alert(`Insufficient stock. Only ${product.stock_quantity} available.`);
           return;
         }
+        const price = pricingMode === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.retail_price);
         newCart[existingIndex].quantity = newQty;
-        newCart[existingIndex].total_price = newQty * Number(product.retail_price);
+        newCart[existingIndex].unit_price = price;
+        newCart[existingIndex].total_price = newQty * price;
         setCart(newCart);
       }
     } else {
@@ -151,11 +153,12 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
         return;
       }
       
+      const price = pricingMode === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.retail_price);
       const newCartItem = {
         product,
         quantity: 1,
-        unit_price: Number(product.retail_price),
-        total_price: Number(product.retail_price),
+        unit_price: price,
+        total_price: price,
         serial_numbers: []
       };
 
@@ -193,18 +196,20 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     }
 
     const newCart = [...cart];
+    const price = pricingMode === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.retail_price);
     const serialStr = selectedSerials.join(', ');
 
     if (cartIndex > -1) {
       newCart[cartIndex].quantity = qty;
       newCart[cartIndex].serial_numbers = selectedSerials;
-      newCart[cartIndex].total_price = qty * Number(product.retail_price);
+      newCart[cartIndex].unit_price = price;
+      newCart[cartIndex].total_price = qty * price;
     } else {
       newCart.push({
         product,
         quantity: qty,
-        unit_price: Number(product.retail_price),
-        total_price: qty * Number(product.retail_price),
+        unit_price: price,
+        total_price: qty * price,
         serial_numbers: selectedSerials
       });
     }
@@ -283,22 +288,6 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     }
 
     let tenderedVal = Number(amountTendered || 0);
-    let mixedCash = 0;
-    let mixedMpesa = 0;
-
-    if (paymentMethod === 'Cash') {
-      if (tenderedVal > 0 && tenderedVal < getTotal()) {
-        alert("Tendered cash amount cannot be less than the grand total.");
-        setIsProcessing(false);
-        return;
-      }
-      if (tenderedVal === 0) {
-        tenderedVal = getTotal();
-      }
-    } else if (paymentMethod === 'Mixed') {
-      // In POSModule, we'll store Mixed Cash in amountTendered and Mixed M-Pesa in a new state variable.
-      // But wait, we haven't added the new state variables yet. I will use `mixedCashAmount` and `mixedMpesaAmount`.
-    }
 
     setIsProcessing(true);
 
@@ -312,8 +301,10 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       total: getTotal().toFixed(2),
       payment_method: paymentMethod,
       payment_reference: paymentMethod === 'M-Pesa' ? (paymentRef || `MP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`) : paymentRef,
-      amount_tendered: paymentMethod === 'Cash' ? tenderedVal : 0,
-      change_due: paymentMethod === 'Cash' ? Math.max(0, tenderedVal - getTotal()) : 0,
+      amount_tendered: paymentMethod === 'Cash' ? tenderedVal : (paymentMethod === 'Mixed' ? Number(mixedCashAmount || 0) : 0),
+      change_due: paymentMethod === 'Cash' ? Math.max(0, tenderedVal - getTotal()) : (paymentMethod === 'Mixed' ? Math.max(0, (Number(mixedCashAmount || 0) + Number(mixedMpesaAmount || 0)) - getTotal()) : 0),
+      mixed_cash_amount: paymentMethod === 'Mixed' ? Number(mixedCashAmount || 0) : 0,
+      mixed_mpesa_amount: paymentMethod === 'Mixed' ? Number(mixedMpesaAmount || 0) : 0,
       items: cart.map(item => ({
         product: item.product.id,
         quantity: item.quantity,
@@ -330,6 +321,8 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       setDiscountPercent(0);
       setPaymentRef('');
       setAmountTendered('');
+      setMixedCashAmount('');
+      setMixedMpesaAmount('');
       onAddLog('SALE_CREATE', `Completed transaction #${receipt.id} - Total KES ${receipt.total}`);
     } catch (err) {
       alert(`Checkout failed: ${err.message}`);
@@ -352,7 +345,23 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden' }}>
         
         {/* Scanner and Search Area */}
-        <div className="pos-search-container" style={{ display: 'flex', gap: '1rem' }}>
+        <div className="pos-search-container" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-muted)' }}>
+            <button
+              type="button"
+              onClick={() => setPricingMode('Retail')}
+              style={{ padding: '0.5rem 1rem', background: pricingMode === 'Retail' ? 'var(--accent-lime)' : 'transparent', color: pricingMode === 'Retail' ? '#000' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontWeight: pricingMode === 'Retail' ? 'bold' : 'normal' }}
+            >
+              Retail
+            </button>
+            <button
+              type="button"
+              onClick={() => setPricingMode('Wholesale')}
+              style={{ padding: '0.5rem 1rem', background: pricingMode === 'Wholesale' ? 'var(--accent-cyan)' : 'transparent', color: pricingMode === 'Wholesale' ? '#000' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontWeight: pricingMode === 'Wholesale' ? 'bold' : 'normal' }}
+            >
+              Wholesale
+            </button>
+          </div>
           <form onSubmit={handleBarcodeSubmit} style={{ flex: 1, position: 'relative' }}>
             <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
               <ShoppingCart size={18} />
