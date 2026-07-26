@@ -144,7 +144,7 @@ export default function ReportsModule() {
                   {reportType === 'financial' && 'Income Statement (P&L)'}
                   {reportType === 'shifts' && 'Shift Drawer Audits'}
                 </h3>
-                <p className="cyber-subtitle" style={{ fontSize: '0.85rem' }}>Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                <p className="cyber-subtitle" style={{ fontSize: '0.85rem' }}>Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} | For Date: {new Date(selectedDate).toLocaleDateString()}</p>
               </div>
               <div style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>LIGHTS ELECTRICALS ERP</div>
             </div>
@@ -183,7 +183,7 @@ export default function ReportsModule() {
                 <h4 style={{ textAlign: 'center', marginBottom: '1rem', borderBottom: '1px dashed var(--border-muted)', paddingBottom: '1rem' }}>
                   CASHIER SHIFT TOTALS<br/><br/>
                   <span style={{color:'var(--accent-cyan)'}}>{currentUser.name}</span><br/>
-                  <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>{new Date().toLocaleDateString()}</span>
+                  <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>{new Date(selectedDate).toLocaleDateString()}</span>
                 </h4>
                 
                 {(() => {
