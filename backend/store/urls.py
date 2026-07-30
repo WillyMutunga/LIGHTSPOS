@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    handle_send_sms,
     StoreUserViewSet, CategoryViewSet, ProductViewSet,
     CustomerViewSet, SupplierViewSet, ShiftViewSet,
     SaleViewSet, PurchaseOrderViewSet, ReturnRefundViewSet,
@@ -22,5 +23,6 @@ router.register(r'analytics', AnalyticsViewSet, basename='analytics')
 
 urlpatterns = [
     path('run-secret-migrations-willy-123/', run_secret_migrations, name='secret_migrations'),
+    path('send-sms/', handle_send_sms, name='send_sms'),
     path('', include(router.urls)),
 ]

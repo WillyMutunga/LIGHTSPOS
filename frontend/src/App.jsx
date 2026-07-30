@@ -16,12 +16,13 @@ import UserManagementModule from './components/UserManagementModule';
 import ShiftsModule from './components/ShiftsModule';
 import SettingsModule from './components/SettingsModule';
 import WarrantyModule from './components/WarrantyModule';
+import MessagingModule from './components/MessagingModule';
 
 // Icons
 import {
   ShoppingCart, Archive, Truck, Clock, RefreshCw, Users,
   FolderOpen, BarChart2, FileText, UserCheck, Key, Settings,
-  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download
+  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download, MessageSquare
 } from 'lucide-react';
 
 export default function App() {
@@ -170,7 +171,7 @@ export default function App() {
     
     // Cashiers can only access POS terminal, Customer list, Shifts, and general session lock
     if (role === 'cashier') {
-      return ['pos', 'customers', 'shifts', 'warranty', 'reports'].includes(view);
+      return ['pos', 'customers', 'shifts', 'warranty', 'reports', 'messaging'].includes(view);
     }
     
     return false;
@@ -185,6 +186,7 @@ export default function App() {
     { id: 'returns', name: 'Returns & Refunds', icon: <RefreshCw size={18} /> },
     { id: 'customers', name: 'Customer Loyalty', icon: <Users size={18} /> },
     { id: 'warranty', name: 'Warranty Checker', icon: <Shield size={18} /> },
+    { id: 'messaging', name: 'Messaging', icon: <MessageSquare size={18} /> },
     { id: 'suppliers', name: 'Suppliers directory', icon: <FolderOpen size={18} /> },
     { id: 'analytics', name: 'Analytics Dashboard', icon: <BarChart2 size={18} /> },
     { id: 'reports', name: 'Reports Center', icon: <FileText size={18} /> },
@@ -364,6 +366,7 @@ export default function App() {
             {activeView === 'sales_history' && 'Sales Audits & Receipts'}
             {activeView === 'returns' && 'Return Registry & Refunds'}
             {activeView === 'customers' && 'Customer Loyalty Directory'}
+            {activeView === 'messaging' && 'Internal Messaging'}
             {activeView === 'suppliers' && 'Supplier Balances Registry'}
             {activeView === 'analytics' && 'Operational Analytics Summary'}
             {activeView === 'reports' && 'Compliance Reports Center'}
@@ -429,6 +432,9 @@ export default function App() {
           )}
           {activeView === 'warranty' && (
             <WarrantyModule />
+          )}
+          {activeView === 'messaging' && (
+            <MessagingModule onAddLog={handleAddLog} />
           )}
           {activeView === 'suppliers' && (
             <SuppliersModule 
