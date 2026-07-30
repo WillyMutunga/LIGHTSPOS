@@ -3,13 +3,17 @@ import urllib.request
 import urllib.error
 import json
 import ssl
+from pathlib import Path
 
-# Load dotenv if it exists, otherwise rely on os.environ
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+# Fallback .env parser in case python-dotenv is not installed
+env_path = Path(__file__).resolve().parent.parent / '.env'
+if env_path.exists():
+    with open(env_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                k, v = line.split('=', 1)
+                os.environ.setdefault(k.strip(), v.strip())
 
 CASAMOKO_API_KEY = os.getenv("CASAMOKO_API_KEY")
 CASAMOKO_API_URL = os.getenv("CASAMOKO_API_URL", "https://casamoko.co.ke/api/v1/sms/send")
@@ -17,12 +21,12 @@ DEFAULT_SENDER = os.getenv("CASAMOKO_DEFAULT_SENDER", "CASAMOKO")
 
 def send_sms(phone: str, message: str, sender_id: str = None) -> dict:
     """
-    Dispatches SMS via Casamoko REST API using urllib to avoid dependency issues
+    Dispatches SMS via Casamoko REST API using urllib and manual env parsing
     """
     if sender_id is None:
         sender_id = DEFAULT_SENDER
         
-    if not CASAMOKO_API_KEY:
+    if not CASAMOKO_API_KEY or CASAMOKO_API_KEY == 'YOUR_API_KEY_HERE':
         return {
             "status": "ERROR", 
             "message": "API Key is missing. Please set CASAMOKO_API_KEY in .env"
