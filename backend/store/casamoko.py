@@ -5,28 +5,35 @@ import json
 import ssl
 from pathlib import Path
 
-# Fallback .env parser in case python-dotenv is not installed
-env_path = Path(__file__).resolve().parent.parent / '.env'
-if env_path.exists():
-    with open(env_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                k, v = line.split('=', 1)
-                os.environ.setdefault(k.strip(), v.strip())
-
-CASAMOKO_API_KEY = os.getenv("CASAMOKO_API_KEY")
-CASAMOKO_API_URL = os.getenv("CASAMOKO_API_URL", "https://casamoko.co.ke/api/v1/sms/send")
-DEFAULT_SENDER = os.getenv("CASAMOKO_DEFAULT_SENDER", "CASAMOKO")
+def get_casamoko_env():
+    # Read the .env file directly for the latest keys
+    env_vars = {}
+    env_path = Path(__file__).resolve().parent.parent / '.env'
+    if env_path.exists():
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    # Strip spaces and quotes
+                    env_vars[k.strip()] = v.strip().strip('"' + "'")
+                    
+    api_key = env_vars.get("CASAMOKO_API_KEY") or os.getenv("CASAMOKO_API_KEY")
+    api_url = env_vars.get("CASAMOKO_API_URL") or os.getenv("CASAMOKO_API_URL", "https://casamoko.co.ke/api/v1/sms/send")
+    default_sender = env_vars.get("CASAMOKO_DEFAULT_SENDER") or os.getenv("CASAMOKO_DEFAULT_SENDER", "CASAMOKO")
+    
+    return api_key, api_url, default_sender
 
 def send_sms(phone: str, message: str, sender_id: str = None) -> dict:
     """
-    Dispatches SMS via Casamoko REST API using urllib and manual env parsing
+    Dispatches SMS via Casamoko REST API using dynamic .env parsing
     """
+    api_key, api_url, default_sender = get_casamoko_env()
+    
     if sender_id is None:
-        sender_id = DEFAULT_SENDER
+        sender_id = default_sender
         
-    if not CASAMOKO_API_KEY or CASAMOKO_API_KEY == 'YOUR_API_KEY_HERE':
+    if not api_key or api_key == 'YOUR_API_KEY_HERE':
         return {
             "status": "ERROR", 
             "message": "API Key is missing. Please set CASAMOKO_API_KEY in .env"
@@ -39,13 +46,13 @@ def send_sms(phone: str, message: str, sender_id: str = None) -> dict:
     }
     
     headers = {
-        "Authorization": f"Bearer {CASAMOKO_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
     
     req = urllib.request.Request(
-        CASAMOKO_API_URL, 
+        api_url, 
         data=json.dumps(payload).encode('utf-8'), 
         headers=headers, 
         method='POST'
