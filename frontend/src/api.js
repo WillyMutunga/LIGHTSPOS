@@ -143,5 +143,11 @@ export const api = {
   }),
 
   // Analytics
-  getAnalyticsSummary: () => request('/analytics/summary/')
+  getAnalyticsSummary: () => request('/analytics/summary/'),
+
+  // Casamoko SMS Integration
+  sendSms: (payload) => request('/send-sms/', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
 };
