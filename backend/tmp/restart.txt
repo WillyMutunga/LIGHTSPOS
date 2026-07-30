@@ -1,1 +1,1 @@
-Restarting Passenger App for syntax fix
+Restarting Passenger App for SMS Integration
