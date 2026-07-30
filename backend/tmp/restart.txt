@@ -1,1 +1,1 @@
-Restarting Passenger App for dependency fix
+Restarting Passenger App for API key env fix
