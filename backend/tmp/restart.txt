@@ -1,1 +1,1 @@
-Restarting Passenger App to apply dynamic parsing
+Restarting Passenger App for checkout SMS feature
