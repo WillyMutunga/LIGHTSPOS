@@ -19,20 +19,21 @@ export default function ReportsModule() {
     try {
       if (reportType === 'sales' || reportType === 'cashier_daily') {
         const sales = await api.getSales();
-        const targetDate = new Date(selectedDate).toLocaleDateString();
         
         if (reportType === 'cashier_daily') {
            // Filter for selected date's sales by current user
            const filtered = sales.filter(s => {
-               const sDate = new Date(s.timestamp).toLocaleDateString();
-               return sDate === targetDate && s.cashier === currentUser.id;
+               const sDateObj = new Date(s.timestamp);
+               const sDateStr = `${sDateObj.getFullYear()}-${String(sDateObj.getMonth() + 1).padStart(2, '0')}-${String(sDateObj.getDate()).padStart(2, '0')}`;
+               return sDateStr === selectedDate && String(s.cashier) === String(currentUser.id);
            });
            setReportData(filtered);
         } else {
            // Filter all sales by selected date
            const filtered = sales.filter(s => {
-               const sDate = new Date(s.timestamp).toLocaleDateString();
-               return sDate === targetDate;
+               const sDateObj = new Date(s.timestamp);
+               const sDateStr = `${sDateObj.getFullYear()}-${String(sDateObj.getMonth() + 1).padStart(2, '0')}-${String(sDateObj.getDate()).padStart(2, '0')}`;
+               return sDateStr === selectedDate;
            });
            setReportData(filtered);
         }
