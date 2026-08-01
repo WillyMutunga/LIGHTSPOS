@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import { db } from './utils/db';
 
 async function request(path, options = {}) {
   const url = `${API_BASE}${path}`;
@@ -26,6 +27,9 @@ async function request(path, options = {}) {
     return await response.json();
   } catch (error) {
     console.error(`API Error on ${url}:`, error);
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      error.isOffline = true;
+    }
     throw error;
   }
 }
@@ -46,12 +50,33 @@ export const api = {
   getCategories: () => request('/categories/'),
 
   // Products
-  getProducts: (search = '', category = '') => {
+  getProducts: async (search = '', category = '') => {
     let query = [];
     if (search) query.push(`search=${encodeURIComponent(search)}`);
     if (category) query.push(`category=${encodeURIComponent(category)}`);
     const queryString = query.length ? `?${query.join('&')}` : '';
-    return request(`/products/${queryString}`);
+    
+    try {
+      const data = await request(`/products/${queryString}`);
+      // Cache products for offline use
+      if (!search && !category) {
+        await db.products.bulkPut(data);
+      }
+      return data;
+    } catch (err) {
+      if (err.isOffline) {
+        console.warn('Network offline, returning cached products');
+        let all = await db.products.toArray();
+        if (search) {
+          all = all.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode === search);
+        }
+        if (category) {
+          all = all.filter(p => p.category === category);
+        }
+        return all;
+      }
+      throw err;
+    }
   },
   getProductByBarcode: (barcode) => request(`/products/barcode/?barcode=${encodeURIComponent(barcode)}`),
   createProduct: (product) => request('/products/', {
@@ -64,9 +89,25 @@ export const api = {
   }),
 
   // Customers
-  getCustomers: (search = '') => {
+  getCustomers: async (search = '') => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return request(`/customers/${query}`);
+    try {
+      const data = await request(`/customers/${query}`);
+      if (!search) {
+        await db.customers.bulkPut(data);
+      }
+      return data;
+    } catch (err) {
+      if (err.isOffline) {
+        console.warn('Network offline, returning cached customers');
+        let all = await db.customers.toArray();
+        if (search) {
+          all = all.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search));
+        }
+        return all;
+      }
+      throw err;
+    }
   },
   createCustomer: (customer) => request('/customers/', {
     method: 'POST',
@@ -100,10 +141,24 @@ export const api = {
 
   // Sales
   getSales: () => request('/sales/'),
-  checkout: (checkoutData) => request('/sales/checkout/', {
-    method: 'POST',
-    body: JSON.stringify(checkoutData)
-  }),
+  checkout: async (checkoutData) => {
+    try {
+      return await request('/sales/checkout/', {
+        method: 'POST',
+        body: JSON.stringify(checkoutData)
+      });
+    } catch (err) {
+      if (err.isOffline) {
+        console.warn('Network offline, saving sale locally');
+        await db.pendingSales.add({
+          ...checkoutData,
+          timestamp: new Date().toISOString()
+        });
+        return { success: true, offline: true, message: 'Sale saved offline' };
+      }
+      throw err;
+    }
+  },
 
   // Purchases / Procurement
   getPurchases: () => request('/purchases/'),
@@ -149,5 +204,27 @@ export const api = {
   sendSms: (payload) => request('/send-sms/', {
     method: 'POST',
     body: JSON.stringify(payload)
-  })
+  }),
+
+  // Offline Sync Manager
+  syncOfflineSales: async () => {
+    if (!navigator.onLine) return;
+    
+    const pending = await db.pendingSales.toArray();
+    if (pending.length === 0) return;
+    
+    console.log(`Syncing ${pending.length} offline sales...`);
+    for (let sale of pending) {
+      try {
+        const { id, timestamp, ...payload } = sale; // remove local Dexie keys
+        await request('/sales/checkout/', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        await db.pendingSales.delete(sale.id);
+      } catch (err) {
+        console.error('Failed to sync sale', err);
+      }
+    }
+  }
 };

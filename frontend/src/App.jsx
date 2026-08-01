@@ -45,6 +45,22 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Offline Sync Manager
+  useEffect(() => {
+    const sync = () => api.syncOfflineSales().catch(console.error);
+    
+    // Sync when coming back online
+    window.addEventListener('online', sync);
+    
+    // Also periodically try to sync every 30 seconds just in case
+    const syncInterval = setInterval(sync, 30000);
+    
+    return () => {
+      window.removeEventListener('online', sync);
+      clearInterval(syncInterval);
+    };
+  }, []);
+
   // PWA Install Prompt Listener
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;

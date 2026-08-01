@@ -103,14 +103,19 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
                   <span style={{ color: 'var(--text-muted)' }}>Opening Float:</span>
                   <span className="currency">KES {Number(activeShift.starting_cash).toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Cash Sales:</span>
-                  <span className="currency" style={{ color: 'var(--accent-cyan)' }}>KES {cashSales.toLocaleString()}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '0.5rem', borderTop: '1px solid var(--border-muted)' }}>
-                  <span style={{ color: 'var(--text-main)' }}>Expected Cash:</span>
-                  <span className="currency" style={{ color: 'var(--success-lime)' }}>KES {getExpectedCash().toLocaleString()}</span>
-                </div>
+                
+                {currentUser.role !== 'cashier' && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Cash Sales:</span>
+                      <span className="currency" style={{ color: 'var(--accent-cyan)' }}>KES {cashSales.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '0.5rem', borderTop: '1px solid var(--border-muted)' }}>
+                      <span style={{ color: 'var(--text-main)' }}>Expected Cash:</span>
+                      <span className="currency" style={{ color: 'var(--success-lime)' }}>KES {getExpectedCash().toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <form onSubmit={handleCloseShift} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--border-muted)', paddingTop: '1rem' }}>

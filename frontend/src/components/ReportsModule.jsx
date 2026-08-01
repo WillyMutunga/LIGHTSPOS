@@ -209,10 +209,12 @@ export default function ReportsModule({ currentUser }) {
 
                   return (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Cash Collected:</span>
-                        <span className="currency">KES {totalCash.toLocaleString()}</span>
-                      </div>
+                      {currentUser.role !== 'cashier' && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Cash Collected:</span>
+                          <span className="currency">KES {totalCash.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>M-Pesa Collected:</span>
                         <span className="currency">KES {totalMpesa.toLocaleString()}</span>
@@ -225,12 +227,22 @@ export default function ReportsModule({ currentUser }) {
                         <span>Store Credit:</span>
                         <span className="currency">KES {totalCredit.toLocaleString()}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--accent-cyan)', paddingBottom: '0.5rem', fontWeight: 'bold' }}>
-                        <span>Gross Shift Sales:</span>
-                        <span className="currency" style={{ color: 'var(--success-lime)', fontSize: '1.15rem' }}>
-                          KES {grandTotal.toLocaleString()}
-                        </span>
-                      </div>
+                      
+                      {currentUser.role !== 'cashier' && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--accent-cyan)', paddingBottom: '0.5rem', fontWeight: 'bold' }}>
+                          <span>Gross Shift Sales:</span>
+                          <span className="currency" style={{ color: 'var(--success-lime)', fontSize: '1.15rem' }}>
+                            KES {grandTotal.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {currentUser.role === 'cashier' && (
+                        <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--alert-orange)', fontSize: '0.85rem', textAlign: 'center', marginTop: '0.5rem' }}>
+                          Blind shift closing is enforced. Cash totals are hidden.
+                        </div>
+                      )}
+                      
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem', justifyContent: 'center' }}>
                         <span>Transactions: {reportData.length}</span>
                       </div>
