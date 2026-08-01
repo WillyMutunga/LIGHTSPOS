@@ -336,6 +336,13 @@ class SaleViewSet(viewsets.ModelViewSet):
             details=f"Checkout Sale #{sale.id} completed. Total: KES {total}. Payment: {payment_method}"
         )
 
+        # Send instant SMS receipt if customer has a phone number
+        if customer and customer.phone:
+            import threading
+            from .casamoko import send_sms
+            msg = f"Dear {customer.name}, thank you for shopping with us! Your purchase total is KES {total}. Receipt #{sale.id}."
+            threading.Thread(target=send_sms, args=(customer.phone, msg)).start()
+
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])
