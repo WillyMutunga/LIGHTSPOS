@@ -342,6 +342,13 @@ class SaleViewSet(viewsets.ModelViewSet):
             from .casamoko import send_sms
             msg = f"Dear {customer.name}, thank you for shopping with us! Your purchase total is KES {total}. Receipt #{sale.id}."
             threading.Thread(target=send_sms, args=(customer.phone, msg)).start()
+            
+            # Log the SMS so the system owner can see it was sent
+            AuditLog.objects.create(
+                action="SMS_DISPATCH",
+                cashier=cashier,
+                details=f"Automated Checkout SMS sent to {customer.phone}: '{msg}'"
+            )
 
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
 
