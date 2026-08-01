@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { FileText, Printer, ShieldCheck, Download } from 'lucide-react';
 
-export default function ReportsModule() {
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+export default function ReportsModule({ currentUser }) {
   const [reportType, setReportType] = useState(currentUser.role === 'admin' ? 'sales' : 'cashier_daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState(null);

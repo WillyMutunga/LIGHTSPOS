@@ -445,7 +445,7 @@ export default function App() {
             <AnalyticsModule />
           )}
           {activeView === 'reports' && (
-            <ReportsModule />
+            <ReportsModule currentUser={currentUser} />
           )}
           {activeView === 'users' && (
             <UserManagementModule 
