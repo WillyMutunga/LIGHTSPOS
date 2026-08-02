@@ -778,17 +778,24 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
 
           {/* SMS/WhatsApp Receipt Checkbox */}
           {selectedCustomer && selectedCustomer.phone !== '0000000000' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'var(--bg-darker)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
-              <input
-                type="checkbox"
-                id="sendReceiptSms"
-                checked={sendNotification}
-                onChange={(e) => setSendNotification(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success-lime)' }}
-              />
-              <label htmlFor="sendReceiptSms" style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>
-                Send WhatsApp/SMS Receipt to {selectedCustomer.phone}
-              </label>
+            <div style={{ marginBottom: '1rem', background: 'var(--bg-darker)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  id="sendReceiptSms"
+                  checked={sendNotification}
+                  onChange={(e) => setSendNotification(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success-lime)' }}
+                />
+                <label htmlFor="sendReceiptSms" style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>
+                  Send WhatsApp Receipt to {selectedCustomer.phone}
+                </label>
+              </div>
+              {sendNotification && (
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--bg-dark)', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--text-muted)', borderLeft: '3px solid var(--success-lime)', fontStyle: 'italic' }}>
+                  <strong>Preview:</strong> "Thank you for shopping with us, {selectedCustomer.name}! Your receipt for KES {getTotal().toFixed(2)} has been confirmed."
+                </div>
+              )}
             </div>
           )}
 

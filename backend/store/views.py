@@ -339,7 +339,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         # Send instant SMS receipt if customer has a phone number
         if customer and customer.phone:
             import threading
-            from .casamoko import send_sms
+            from .whatsapp import send_whatsapp_message as send_sms
             msg = f"Dear {customer.name}, thank you for shopping with us! Your purchase total is KES {total}. Receipt #{sale.id}."
             threading.Thread(target=send_sms, args=(customer.phone, msg)).start()
             
@@ -665,7 +665,7 @@ def run_secret_migrations(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
 
-from .casamoko import send_sms
+from .whatsapp import send_whatsapp_message as send_sms
 import json
 
 @api_view(['POST'])
