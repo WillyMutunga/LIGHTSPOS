@@ -9,6 +9,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
   const [searchResults, setSearchResults] = useState([]);
   const [isPushingMpesa, setIsPushingMpesa] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState('');
+  const [sendNotification, setSendNotification] = useState(true);
   const [amountTendered, setAmountTendered] = useState('');
   const [cart, setCart] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -324,6 +325,14 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       setMixedCashAmount('');
       setMixedMpesaAmount('');
       onAddLog('SALE_CREATE', `Completed transaction #${receipt.id} - Total KES ${receipt.total}`);
+      
+      // Send Digital Receipt (SMS/WhatsApp)
+      if (sendNotification && selectedCustomer && selectedCustomer.phone && selectedCustomer.phone !== '0000000000') {
+        const message = `Thank you for shopping with us, ${selectedCustomer.name}! Your receipt #${receipt.id} for KES ${receipt.total} has been confirmed.`;
+        api.sendSms({ phone: selectedCustomer.phone, message: message }).catch(e => {
+          console.error('Failed to send digital receipt:', e);
+        });
+      }
     } catch (err) {
       alert(`Checkout failed: ${err.message}`);
     } finally {
@@ -766,6 +775,22 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
               </div>
             )}
           </div>
+
+          {/* SMS/WhatsApp Receipt Checkbox */}
+          {selectedCustomer && selectedCustomer.phone !== '0000000000' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'var(--bg-darker)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+              <input
+                type="checkbox"
+                id="sendReceiptSms"
+                checked={sendNotification}
+                onChange={(e) => setSendNotification(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success-lime)' }}
+              />
+              <label htmlFor="sendReceiptSms" style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>
+                Send WhatsApp/SMS Receipt to {selectedCustomer.phone}
+              </label>
+            </div>
+          )}
 
           <button 
             className="cyber-button btn-lime" 
