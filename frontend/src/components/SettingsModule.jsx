@@ -16,18 +16,18 @@ export default function SettingsModule({ onAddLog }) {
   };
 
   const handleReSeed = async () => {
-    if (!window.confirm("Are you sure you want to re-seed the store database? This will clear all current sales transactions, shifts, and custom stock changes!")) return;
+    if (!window.confirm("Are you sure you want to factory reset the database? This will clear all sales transactions, shifts, suppliers, and custom stock changes!")) return;
     
+    const adminPin = window.prompt("WARNING: This action is permanent!\nPlease enter an ADMIN PIN to authorize the reset:");
+    if (!adminPin) return;
+
     setIsResetting(true);
     try {
-      // In django, we trigger database seed. Wait, can we trigger database seed from backend API?
-      // Wait, we didn't expose a seed endpoint, but wait! We can trigger it by making a post request, or we can mock/notify the user that seed script can be run on terminal, or we can just mock a success because the command was run in the beginning anyway, or we can implement a custom endpoint if we want.
-      // Wait! Let's mock the success and display instructions to run: `python manage.py seed_db` on terminal, or write a tiny custom seed handler view in Django backend?
-      // Actually, since we've already run the seed script on backend setup, the database is already fully seeded! A simple alert instructing them to run command on terminal or mocking is fine, but wait! We can also write a custom POST action in the backend ViewSet if we wanted, but there's no strict need for a real seeding API route in a standard production app for security. Informing the user is extremely clear and helpful! Let's check: we can show them how to run it.
-      // Or we can mock the seed client-side. Let's do both: show a beautiful prompt.
-      alert("Database reset command issued! If you want to force-reseed the server, run:\npython manage.py seed_db\nin your backend project shell.");
+      await api.factoryReset(adminPin);
+      onAddLog('SYSTEM_RESET', 'Factory reset triggered by admin.');
+      alert("System has been successfully factory reset! All transactional data is wiped.");
     } catch (err) {
-      alert(err.message);
+      alert(`Factory Reset Failed: ${err.message}`);
     } finally {
       setIsResetting(false);
     }

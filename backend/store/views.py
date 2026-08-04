@@ -686,3 +686,26 @@ def handle_send_sms(request):
             return JsonResponse({"success": False, "error": res.get('message')}, status=400)
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def factory_reset_view(request):
+    pin = request.data.get('admin_pin')
+    try:
+        StoreUser.objects.get(pin=pin, role='admin', is_active=True)
+    except StoreUser.DoesNotExist:
+        return Response({'error': 'Invalid Admin PIN. Only Admins can factory reset.'}, status=status.HTTP_403_FORBIDDEN)
+        
+    # delete everything...
+    SaleItem.objects.all().delete()
+    Sale.objects.all().delete()
+    Shift.objects.all().delete()
+    PurchaseOrderItem.objects.all().delete()
+    PurchaseOrder.objects.all().delete()
+    ReturnRefund.objects.all().delete()
+    CustomerDebtLedger.objects.all().delete()
+    AuditLog.objects.all().delete()
+    Supplier.objects.all().delete()
+    Product.objects.all().update(stock_quantity=0)
+    
+    return Response({'status': 'System data reset successful'})
