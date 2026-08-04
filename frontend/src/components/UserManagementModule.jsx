@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { UserPlus, Shield, Key, EyeOff, Save } from 'lucide-react';
 
-export default function UserManagementModule({ onAddLog }) {
+export default function UserManagementModule({ onAddLog, currentUser }) {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -19,7 +19,11 @@ export default function UserManagementModule({ onAddLog }) {
   const loadUsers = async () => {
     try {
       const res = await api.getUsers();
-      setUsers(res);
+      if (currentUser?.role === 'manager') {
+        setUsers(res.filter(u => u.role !== 'admin'));
+      } else {
+        setUsers(res);
+      }
     } catch (err) {
       console.error(err);
     }

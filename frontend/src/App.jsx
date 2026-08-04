@@ -466,6 +466,7 @@ export default function App() {
           {activeView === 'users' && (
             <UserManagementModule 
               onAddLog={handleAddLog} 
+              currentUser={currentUser}
             />
           )}
           {activeView === 'shifts' && (
