@@ -73,8 +73,8 @@ try:
     import psycopg2
     # Attempt a real connection with psycopg2
     conn = psycopg2.connect(
-        dbname='lightspos',
-        user='postgres',
+        dbname='skysofts_lightspos',
+        user='skysofts_Willy',
         password='William#20',
         host='127.0.0.1',
         port='5432',
@@ -85,8 +85,8 @@ try:
     # If connection succeeds, configure Django to use PostgreSQL
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'lightspos',
-        'USER': 'postgres',
+        'NAME': 'skysofts_lightspos',
+        'USER': 'skysofts_Willy',
         'PASSWORD': 'William#20',
         'HOST': '127.0.0.1',
         'PORT': '5432',
