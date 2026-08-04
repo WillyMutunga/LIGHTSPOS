@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, UserPlus, Phone, Star, Mail, Save, CreditCard } from 'lucide-react';
+import { Plus, UserPlus, Phone, Star, Mail, Save, CreditCard, Trash2 } from 'lucide-react';
 
 export default function SuppliersModule({ onAddLog }) {
   const [suppliers, setSuppliers] = useState([]);
@@ -71,6 +71,17 @@ export default function SuppliersModule({ onAddLog }) {
     }
   };
 
+  const handleDeleteSupplier = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the supplier "${name}"?`)) return;
+    try {
+      await api.deleteSupplier(id);
+      onAddLog('SUPPLIER_DELETE', `Deleted supplier ${name}`);
+      loadSuppliers();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
       
@@ -128,7 +139,7 @@ export default function SuppliersModule({ onAddLog }) {
                   <td style={{ textAlign: 'right', color: Number(sup.outstanding_balance) > 0 ? 'var(--alert-orange)' : 'var(--success-lime)' }}>
                     KES {Number(sup.outstanding_balance).toLocaleString()}
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     {Number(sup.outstanding_balance) > 0 ? (
                       <button 
                         className="cyber-button"
@@ -141,8 +152,16 @@ export default function SuppliersModule({ onAddLog }) {
                         <CreditCard size={12} /> Pay Balance
                       </button>
                     ) : (
-                      <span style={{ color: 'var(--text-dark)', fontSize: '0.8rem' }}>Settled</span>
+                      <span style={{ color: 'var(--text-dark)', fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>Settled</span>
                     )}
+                    <button
+                      className="cyber-button btn-red"
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                      onClick={() => handleDeleteSupplier(sup.id, sup.name)}
+                      title="Delete Supplier"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </td>
                 </tr>
               ))
