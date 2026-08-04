@@ -202,7 +202,7 @@ export default function App() {
     { id: 'returns', name: 'Returns & Refunds', icon: <RefreshCw size={18} /> },
     { id: 'customers', name: 'Customer Loyalty', icon: <Users size={18} /> },
     { id: 'warranty', name: 'Warranty Checker', icon: <Shield size={18} /> },
-    { id: 'messaging', name: 'Messaging', icon: <MessageSquare size={18} /> },
+    // { id: 'messaging', name: 'Messaging', icon: <MessageSquare size={18} /> },
     { id: 'suppliers', name: 'Suppliers directory', icon: <FolderOpen size={18} /> },
     { id: 'analytics', name: 'Analytics Dashboard', icon: <BarChart2 size={18} /> },
     { id: 'reports', name: 'Reports Center', icon: <FileText size={18} /> },

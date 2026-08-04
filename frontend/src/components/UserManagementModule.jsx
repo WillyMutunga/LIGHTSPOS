@@ -54,11 +54,14 @@ export default function UserManagementModule({ onAddLog }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!name || !pin) return;
+    if (!name) return;
+    if (!editingId && !pin) return;
 
     try {
       if (editingId) {
-        await api.updateUser(editingId, { name, pin, role });
+        const updateData = { name, role };
+        if (pin) updateData.pin = pin;
+        await api.updateUser(editingId, updateData);
         onAddLog('USER_UPDATE', `Updated store user profile: ${name} (Role: ${role})`);
       } else {
         await api.createUser({ name, pin, role });
@@ -220,8 +223,8 @@ export default function UserManagementModule({ onAddLog }) {
                   inputMode="numeric"
                   maxLength="8"
                   className="cyber-input cyber-input-mono"
-                  required
-                  placeholder="e.g. 1234"
+                  required={!editingId}
+                  placeholder={editingId ? "Leave blank to keep current PIN" : "e.g. 1234"}
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                 />
