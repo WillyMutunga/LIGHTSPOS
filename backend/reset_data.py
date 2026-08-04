@@ -24,6 +24,10 @@ def reset_system_data():
     ReturnRefund.objects.all().delete()
     CustomerDebtLedger.objects.all().delete()
     AuditLog.objects.all().delete()
+    
+    print("Deleting suppliers...")
+    from store.models import Supplier
+    Supplier.objects.all().delete()
 
     print("Resetting all product stock quantities to ZERO...")
     Product.objects.all().update(stock_quantity=0)
