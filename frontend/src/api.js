@@ -236,7 +236,6 @@ export const api = {
         console.error('Failed to sync sale', err);
       }
     }
-    }
   },
 
   factoryReset: async (adminPin) => {
