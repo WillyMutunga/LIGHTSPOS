@@ -26,7 +26,7 @@ def reset_system_data():
     AuditLog.objects.all().delete()
 
     print("Resetting all product stock quantities to ZERO...")
-    Product.objects.all().update(stock=0)
+    Product.objects.all().update(stock_quantity=0)
 
     print("\nSUCCESS: System data has been completely reset!")
 
