@@ -13,12 +13,7 @@ from store.models import (
 )
 
 def reset_system_data():
-    print("WARNING: This will permanently delete all sales, shifts, and stock data.")
-    confirm = input("Are you absolutely sure? Type 'YES' to confirm: ")
-    
-    if confirm != 'YES':
-        print("Aborted.")
-        return
+    print("WARNING: Permanently deleting all sales, shifts, and stock data...")
 
     print("Deleting transactional data...")
     SaleItem.objects.all().delete()
