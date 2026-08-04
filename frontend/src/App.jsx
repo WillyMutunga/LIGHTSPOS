@@ -180,9 +180,9 @@ export default function App() {
     const role = currentUser.role;
     if (role === 'admin') return true;
     
-    // Managers can access everything except Reports/Users/Settings
+    // Managers can access everything except Settings
     if (role === 'manager') {
-      return !['users', 'settings'].includes(view);
+      return !['settings'].includes(view);
     }
     
     // Cashiers can only access POS terminal, Customer list, Shifts, and general session lock
