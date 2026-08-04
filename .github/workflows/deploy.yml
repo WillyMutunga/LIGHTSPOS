@@ -34,8 +34,8 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./frontend/dist/
-        # IMPORTANT: Change this to the exact folder name where your frontend lives on cPanel!
-        server-dir: ./public_html/lightspos.skysoftsystems.co.ke/
+        # Fixed path for frontend
+        server-dir: ./lightspos.skysoftsystems.co.ke/
 
     # --- DEPLOY BACKEND ---
     - name: Sync Backend Files via FTP
@@ -45,8 +45,8 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./backend/
-        # IMPORTANT: Change this to the exact folder name where your backend lives on cPanel!
-        server-dir: ./lightspos_backend/
+        # Fixed path for backend
+        server-dir: ./lightspos.skysoftsystems.co.ke/lightspos_backend/
         exclude: |
           **/.env
           **/db.sqlite3
