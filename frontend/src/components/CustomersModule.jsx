@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { UserPlus, Phone, Star, Mail, Save, BookOpen, DollarSign, Clock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { UserPlus, Phone, Star, Mail, Save, BookOpen, DollarSign, Clock, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
 
 export default function CustomersModule({ onAddLog }) {
   const [customers, setCustomers] = useState([]);
@@ -92,6 +92,17 @@ export default function CustomersModule({ onAddLog }) {
     }
   };
 
+  const handleDeleteCustomer = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete customer "${name}"?`)) return;
+    try {
+      await api.deleteCustomer(id);
+      onAddLog('CUSTOMER_DELETE', `Deleted customer profile for ${name}`);
+      loadCustomers();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
       
@@ -129,7 +140,7 @@ export default function CustomersModule({ onAddLog }) {
               <th style={{ textAlign: 'center' }}>Loyalty Points</th>
               <th style={{ textAlign: 'center' }}>Reward Value</th>
               <th style={{ textAlign: 'right' }}>Outstanding Debt</th>
-              <th style={{ textAlign: 'center' }}>Ledger Statements</th>
+              <th style={{ textAlign: 'center' }}>Actions & Ledger</th>
             </tr>
           </thead>
           <tbody>
@@ -166,16 +177,27 @@ export default function CustomersModule({ onAddLog }) {
                   <td style={{ textAlign: 'right', fontWeight: 'bold', color: Number(cust.outstanding_debt) > 0 ? 'var(--alert-orange)' : 'var(--text-muted)' }}>
                     KES {Number(cust.outstanding_debt).toLocaleString()}
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     {cust.phone !== '0000000000' ? (
                       <button 
                         className="cyber-button btn-cyan" 
                         style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
                         onClick={() => openLedger(cust)}
+                        title="Audit Debt Ledger"
                       >
                         <BookOpen size={12} /> Audit Debt
                       </button>
-                    ) : '—'}
+                    ) : <span style={{ padding: '0.2rem 0.6rem' }}>—</span>}
+                    {cust.phone !== '0000000000' && (
+                      <button
+                        className="cyber-button btn-red"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                        onClick={() => handleDeleteCustomer(cust.id, cust.name)}
+                        title="Delete Customer"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

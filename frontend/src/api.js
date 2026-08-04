@@ -120,6 +120,9 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(customer)
   }),
+  deleteCustomer: (id) => request(`/customers/${id}/`, {
+    method: 'DELETE'
+  }),
 
   // Suppliers
   getSuppliers: (search = '') => {
