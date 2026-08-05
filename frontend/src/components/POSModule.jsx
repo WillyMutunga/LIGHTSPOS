@@ -18,8 +18,9 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
   const [pricingMode, setPricingMode] = useState('Retail');
   const [mixedCashAmount, setMixedCashAmount] = useState('');
   const [mixedMpesaAmount, setMixedMpesaAmount] = useState('');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [discountType, setDiscountType] = useState('percent'); // 'percent' or 'fixed'
   
-  const [discountPercent, setDiscountPercent] = useState(0);
   const [taxRate, setTaxRate] = useState(16); // 16% VAT default
   
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -30,6 +31,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
   // Serial number tracking modal state
   const [serialPickerItem, setSerialPickerItem] = useState(null);
   const [selectedSerials, setSelectedSerials] = useState([]);
+  const [init, setInit] = useState(false);
 
   const barcodeInputRef = useRef(null);
 
@@ -46,7 +48,32 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
+    
+    const saved = localStorage.getItem('posState');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setCart(parsed.cart || []);
+      if (parsed.customer) setSelectedCustomer(parsed.customer);
+      if (parsed.discountValue) setDiscountValue(parsed.discountValue);
+      if (parsed.discountType) setDiscountType(parsed.discountType);
+      if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+      if (parsed.paymentRef) setPaymentRef(parsed.paymentRef);
+    }
+    setInit(true);
   }, []);
+
+  useEffect(() => {
+    if (init) {
+      localStorage.setItem('posState', JSON.stringify({
+        cart,
+        customer: selectedCustomer,
+        discountValue,
+        discountType,
+        paymentMethod,
+        paymentRef
+      }));
+    }
+  }, [cart, selectedCustomer, discountValue, discountType, paymentMethod, paymentRef, activeShift]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -56,7 +83,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
         if (barcodeInputRef.current) barcodeInputRef.current.focus();
       } else if (e.key === 'F2') {
         e.preventDefault();
-        handleCheckout();
+        handleCheckout('completed');
       } else if (e.key === 'Escape') {
         setSerialPickerItem(null);
         setActiveReceipt(null);
@@ -64,7 +91,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, selectedCustomer, discountPercent, paymentMethod, paymentRef, activeShift]);
+  }, [cart, selectedCustomer, discountValue, discountType, paymentMethod, paymentRef, activeShift]);
 
   // Autocomplete for barcode scan input
   useEffect(() => {
@@ -198,7 +225,6 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
 
     const newCart = [...cart];
     const price = pricingMode === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.retail_price);
-    const serialStr = selectedSerials.join(', ');
 
     if (cartIndex > -1) {
       newCart[cartIndex].quantity = qty;
@@ -253,7 +279,12 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
 
   // Calculations (VAT-inclusive pricing)
   const getSubtotal = () => cart.reduce((sum, item) => sum + item.total_price, 0); // Inclusive subtotal
-  const getDiscountAmount = () => getSubtotal() * (discountPercent / 100); // Inclusive discount
+  const getDiscountAmount = () => {
+    if (discountType === 'percent') {
+      return getSubtotal() * (Number(discountValue) / 100);
+    }
+    return Number(discountValue) || 0;
+  };
   const getTotal = () => getSubtotal() - getDiscountAmount(); // Inclusive grand total
   
   // Tax portion included in the total
@@ -272,8 +303,8 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
     return getDiscountAmount() * (100 / (100 + taxRate));
   };
 
-  const handleCheckout = async () => {
-    if (!activeShift) {
+  const handleCheckout = async (status = 'completed') => {
+    if (status === 'completed' && !activeShift) {
       alert("No active shift found. Please open cash drawer shift first.");
       return;
     }
@@ -301,6 +332,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       tax_amount: getTaxAmount().toFixed(2),
       total: getTotal().toFixed(2),
       payment_method: paymentMethod,
+      status: status,
       payment_reference: paymentMethod === 'M-Pesa' ? (paymentRef || `MP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`) : paymentRef,
       amount_tendered: paymentMethod === 'Cash' ? tenderedVal : (paymentMethod === 'Mixed' ? Number(mixedCashAmount || 0) : 0),
       change_due: paymentMethod === 'Cash' ? Math.max(0, tenderedVal - getTotal()) : (paymentMethod === 'Mixed' ? Math.max(0, (Number(mixedCashAmount || 0) + Number(mixedMpesaAmount || 0)) - getTotal()) : 0),
@@ -319,7 +351,7 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
       const receipt = await api.checkout(checkoutData);
       setActiveReceipt(receipt);
       setCart([]);
-      setDiscountPercent(0);
+      setDiscountValue(0);
       setPaymentRef('');
       setAmountTendered('');
       setMixedCashAmount('');
@@ -565,8 +597,45 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
               </datalist>
             </div>
             
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex' }}>
+                <select 
+                  className="cyber-input" 
+                  style={{ width: '80px', borderRight: 'none', borderRadius: '4px 0 0 4px', border: '1px solid var(--border-dark)', background: 'var(--bg-dark)' }}
+                  value={discountType}
+                  onChange={(e) => setDiscountType(e.target.value)}
+                >
+                  <option value="percent">%</option>
+                  <option value="fixed">KES</option>
+                </select>
+                <input 
+                  type="number" 
+                  className="cyber-input"
+                  style={{ flex: 1, borderRadius: '0 4px 4px 0' }}
+                  placeholder={`Discount ${discountType === 'percent' ? '(%)' : '(Amount)'}`}
+                  value={discountValue} 
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  min="0"
+                  max={discountType === 'percent' ? "100" : undefined}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                <span>Subtotal (VAT Inc.)</span>
+                <span>KES {getSubtotal().toLocaleString()}</span>
+              </div>
+              {getDiscountAmount() > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--alert-orange)' }}>
+                  <span>Discount</span>
+                  <span>- KES {getDiscountAmount().toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+
             {selectedCustomer && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', background: 'var(--bg-darker)', padding: '0.5rem', borderRadius: '2px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', background: 'var(--bg-darker)', padding: '0.5rem', borderRadius: '2px', marginTop: '1rem' }}>
                 <span>Loyalty Points: <strong style={{ color: 'var(--success-lime)' }}>{selectedCustomer.loyalty_points}</strong></span>
                 <span>Reward Value: <strong style={{ color: 'var(--accent-cyan)' }}>KES {selectedCustomer.loyalty_points * 1}</strong></span>
               </div>
@@ -585,27 +654,6 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
                 <span className="currency">KES {getTaxExclusiveSubtotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Discount %</span>
-                <input 
-                  type="number" 
-                  className="cyber-input cyber-input-mono" 
-                  style={{ width: '80px', textAlign: 'right', padding: '0.2rem 0.5rem' }} 
-                  value={discountPercent} 
-                  min="0" max="100"
-                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
-                />
-              </div>
-
-              {discountPercent > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Discount Amt (VAT Excl.)</span>
-                  <span className="currency" style={{ color: 'var(--alert-orange)' }}>
-                    - KES {getTaxExclusiveDiscount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              )}
-
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>VAT ({taxRate}%)</span>
                 <span className="currency">KES {getTaxAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -799,14 +847,24 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
             </div>
           )}
 
-          <button 
-            className="cyber-button btn-lime" 
-            style={{ width: '100%', padding: '1rem', fontSize: '1.2rem', justifyContent: 'center' }}
-            disabled={cart.length === 0 || isProcessing}
-            onClick={handleCheckout}
-          >
-            {isProcessing ? "Processing..." : "Complete checkout [F2]"}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+            <button 
+              className="cyber-button"
+              style={{ flex: 1, justifyContent: 'center', height: '3.5rem', fontWeight: 600, border: '1px solid var(--border-muted)', background: 'var(--bg-darker)' }}
+              onClick={() => handleCheckout('quotation')}
+              disabled={isProcessing || cart.length === 0}
+            >
+              Save as Quote
+            </button>
+            <button 
+              className="cyber-button btn-lime"
+              style={{ flex: 2, justifyContent: 'center', height: '3.5rem', fontSize: '1.2rem', fontWeight: 'bold' }}
+              onClick={() => handleCheckout('completed')}
+              disabled={isProcessing || cart.length === 0 || !activeShift}
+            >
+              {isProcessing ? 'Processing...' : `Pay KES ${getTotal().toLocaleString()}`}
+            </button>
+          </div>
         </div>
 
       </div>

@@ -348,3 +348,29 @@
     text-align: center;
   }
 }
+
+/* Print Only Styles */
+@media screen {
+  .print-only {
+    display: none;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-only, .print-only * {
+    visibility: visible;
+  }
+  .print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: white;
+    color: black;
+  }
+}

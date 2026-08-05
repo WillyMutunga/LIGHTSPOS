@@ -10,13 +10,13 @@ import json
 from .models import (
     StoreUser, Category, Product, Customer, Supplier,
     Shift, Sale, SaleItem, PurchaseOrder, PurchaseOrderItem,
-    ReturnRefund, AuditLog, CustomerDebtLedger
+    ReturnRefund, AuditLog, CustomerDebtLedger, Expense, StockAdjustment
 )
 from .serializers import (
     StoreUserSerializer, CategorySerializer, ProductSerializer,
     CustomerSerializer, SupplierSerializer, ShiftSerializer,
     SaleSerializer, PurchaseOrderSerializer, ReturnRefundSerializer,
-    AuditLogSerializer, CustomerDebtLedgerSerializer
+    AuditLogSerializer, CustomerDebtLedgerSerializer, ExpenseSerializer, StockAdjustmentSerializer
 )
 
 class StoreUserViewSet(viewsets.ModelViewSet):
@@ -169,13 +169,16 @@ class ShiftViewSet(viewsets.ModelViewSet):
         actual_cash = decimal.Decimal(str(actual_cash))
         
         # Calculate expected cash in drawer
-        # Starting cash + cash sales
+        # Starting cash + cash sales - expenses
         cash_sales = Sale.objects.filter(
             shift=shift, 
-            payment_method__iexact='Cash'
+            payment_method__iexact='Cash',
+            status='completed'
         ).aggregate(total=Sum('total'))['total'] or decimal.Decimal('0.00')
         
-        expected_cash = shift.starting_cash + cash_sales
+        total_expenses = shift.expenses.aggregate(total=Sum('amount'))['total'] or decimal.Decimal('0.00')
+        
+        expected_cash = shift.starting_cash + cash_sales - total_expenses
         variance = actual_cash - expected_cash
         
         shift.close_time = timezone.now()
@@ -240,10 +243,12 @@ class SaleViewSet(viewsets.ModelViewSet):
         change_due = data.get('change_due', 0)
         mixed_cash_amount = data.get('mixed_cash_amount', 0)
         mixed_mpesa_amount = data.get('mixed_mpesa_amount', 0)
+        status_val = data.get('status', 'completed')
 
         # Create Sale
         sale = Sale.objects.create(
             shift=shift,
+            status=status_val,
             customer=customer,
             cashier=cashier,
             subtotal=decimal.Decimal(str(subtotal)),
@@ -259,7 +264,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         )
 
         # Handle Credit Ledger updates
-        if payment_method == 'Credit':
+        if payment_method == 'Credit' and status_val == 'completed':
             if not customer:
                 raise serializers.ValidationError("A registered customer profile is required for Credit (Store Debt) purchases.")
             CustomerDebtLedger.objects.create(
@@ -273,12 +278,13 @@ class SaleViewSet(viewsets.ModelViewSet):
             customer.save()
 
         # Generate mock eTIMS compliance records
-        import random, string
-        random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        sale.etims_invoice_number = f"KRA-ETIMS-INV-{timezone.now().strftime('%Y%m%d')}-{sale.id:04d}-{random_suffix}"
-        sale.etims_signature = f"TIMS-SIG-{sale.total}-{sale.timestamp.timestamp():.0f}"
-        sale.etims_qr_code_data = f"https://www.kra.go.ke/etims/verify?inv={sale.etims_invoice_number}"
-        sale.save()
+        if status_val == 'completed':
+            import random, string
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            sale.etims_invoice_number = f"KRA-ETIMS-INV-{timezone.now().strftime('%Y%m%d')}-{sale.id:04d}-{random_suffix}"
+            sale.etims_signature = f"TIMS-SIG-{sale.total}-{sale.timestamp.timestamp():.0f}"
+            sale.etims_qr_code_data = f"https://www.kra.go.ke/etims/verify?inv={sale.etims_invoice_number}"
+            sale.save()
 
         for item in items:
             product_id = item.get('product')
@@ -293,25 +299,26 @@ class SaleViewSet(viewsets.ModelViewSet):
                 raise serializers.ValidationError(f"Product ID {product_id} not found")
 
             # Verify stock
-            if product.stock_quantity < quantity:
-                raise serializers.ValidationError(f"Insufficient stock for product {product.name}")
+            if status_val == 'completed':
+                if product.stock_quantity < quantity:
+                    raise serializers.ValidationError(f"Insufficient stock for product {product.name}")
 
-            # Update serials if tracked
-            if product.serial_tracked and serials:
-                sold_serials = [s.strip() for s in serials.split(',') if s.strip()]
-                available_serials = product.get_serials_list()
-                
-                # Check that all sold serials exist in available list
-                for s in sold_serials:
-                    if s not in available_serials:
-                        raise serializers.ValidationError(f"Serial number {s} is not available in stock for {product.name}")
-                    available_serials.remove(s)
-                
-                product.set_serials_list(available_serials)
+                # Update serials if tracked
+                if product.serial_tracked and serials:
+                    sold_serials = [s.strip() for s in serials.split(',') if s.strip()]
+                    available_serials = product.get_serials_list()
+                    
+                    # Check that all sold serials exist in available list
+                    for s in sold_serials:
+                        if s not in available_serials:
+                            raise serializers.ValidationError(f"Serial number {s} is not available in stock for {product.name}")
+                        available_serials.remove(s)
+                    
+                    product.set_serials_list(available_serials)
 
-            # Deduct stock
-            product.stock_quantity -= quantity
-            product.save()
+                # Deduct stock
+                product.stock_quantity -= quantity
+                product.save()
 
             # Create SaleItem
             SaleItem.objects.create(
@@ -709,3 +716,22 @@ def factory_reset_view(request):
     Product.objects.all().update(stock_quantity=0)
     
     return Response({'status': 'System data reset successful'})
+
+
+class ExpenseViewSet(viewsets.ModelViewSet):
+    queryset = Expense.objects.all().order_by('-timestamp')
+    serializer_class = ExpenseSerializer
+    filterset_fields = ['shift', 'cashier']
+
+
+class StockAdjustmentViewSet(viewsets.ModelViewSet):
+    queryset = StockAdjustment.objects.all().order_by('-timestamp')
+    serializer_class = StockAdjustmentSerializer
+    filterset_fields = ['product', 'user', 'reason']
+
+    def perform_create(self, serializer):
+        adjustment = serializer.save()
+        # Update actual stock quantity
+        product = adjustment.product
+        product.stock_quantity = adjustment.new_quantity
+        product.save()

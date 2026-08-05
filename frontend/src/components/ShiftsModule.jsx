@@ -9,6 +9,10 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
   const [loading, setLoading] = useState(false);
   const [cashSales, setCashSales] = useState(0);
 
+  const [expenses, setExpenses] = useState([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseReason, setExpenseReason] = useState('');
   useEffect(() => {
     loadShifts();
   }, [activeShift]);
@@ -23,9 +27,15 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
         // Calculate current Cash sales for active shift
         const sales = await api.getSales();
         const cashSum = sales
-          .filter(s => s.shift === activeShift.id && s.payment_method.toLowerCase() === 'cash')
+          .filter(s => s.shift === activeShift.id && s.payment_method.toLowerCase() === 'cash' && s.status === 'completed')
           .reduce((sum, s) => sum + Number(s.total), 0);
         setCashSales(cashSum);
+
+        // Calculate expenses
+        const expRes = await api.getExpenses();
+        const expList = expRes.filter(e => e.shift === activeShift.id);
+        setExpenses(expList);
+        setTotalExpenses(expList.reduce((sum, e) => sum + Number(e.amount), 0));
       }
     } catch (err) {
       console.error(err);
@@ -71,7 +81,30 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
 
   const getExpectedCash = () => {
     if (!activeShift) return 0;
-    return Number(activeShift.starting_cash) + cashSales;
+    return (Number(activeShift.starting_cash) + cashSales) - totalExpenses;
+  };
+
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    if (!activeShift || !expenseAmount || !expenseReason) return;
+    
+    try {
+      setLoading(true);
+      await api.createExpense({
+        shift: activeShift.id,
+        cashier: currentUser.id,
+        amount: Number(expenseAmount),
+        reason: expenseReason
+      });
+      onAddLog('EXPENSE_ADDED', `Logged expense KES ${expenseAmount} for ${expenseReason}`);
+      setExpenseAmount('');
+      setExpenseReason('');
+      loadShifts();
+    } catch (err) {
+      alert(`Failed to add expense: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,6 +142,10 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Cash Sales:</span>
                       <span className="currency" style={{ color: 'var(--accent-cyan)' }}>KES {cashSales.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Expenses/Payouts:</span>
+                      <span className="currency" style={{ color: 'var(--alert-orange)' }}>- KES {totalExpenses.toLocaleString()}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '0.5rem', borderTop: '1px solid var(--border-muted)' }}>
                       <span style={{ color: 'var(--text-main)' }}>Expected Cash:</span>
@@ -199,6 +236,63 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
 
       </div>
 
+      {activeShift && currentUser.role !== 'cashier' && (
+        <div className="cyber-card" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <h3 className="cyber-title" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Shift Expenses & Payouts</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="cyber-label">Amount (KES)</label>
+                <input 
+                  type="number" 
+                  className="cyber-input cyber-input-mono w-full"
+                  required
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="cyber-label">Reason</label>
+                <input 
+                  type="text" 
+                  className="cyber-input w-full"
+                  required
+                  value={expenseReason}
+                  onChange={(e) => setExpenseReason(e.target.value)}
+                />
+              </div>
+              <button type="submit" className="cyber-button" disabled={loading}>
+                Record Expense
+              </button>
+            </form>
+            <div className="cyber-table-container">
+              <table className="cyber-table cyber-table-mono">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Cashier</th>
+                    <th>Reason</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenses.map(exp => (
+                    <tr key={exp.id}>
+                      <td>{new Date(exp.timestamp).toLocaleTimeString()}</td>
+                      <td>{exp.cashier_name}</td>
+                      <td style={{ fontFamily: 'var(--font-sans)' }}>{exp.reason}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--alert-orange)' }}>KES {Number(exp.amount).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {expenses.length === 0 && (
+                    <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>No expenses recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

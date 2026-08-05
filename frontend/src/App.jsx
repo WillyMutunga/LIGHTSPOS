@@ -10,6 +10,7 @@ import SalesHistoryModule from './components/SalesHistoryModule';
 import ReturnsModule from './components/ReturnsModule';
 import CustomersModule from './components/CustomersModule';
 import SuppliersModule from './components/SuppliersModule';
+import StocktakeModule from './components/StocktakeModule';
 import AnalyticsModule from './components/AnalyticsModule';
 import ReportsModule from './components/ReportsModule';
 import UserManagementModule from './components/UserManagementModule';
@@ -22,7 +23,7 @@ import MessagingModule from './components/MessagingModule';
 import {
   ShoppingCart, Archive, Truck, Clock, RefreshCw, Users,
   FolderOpen, BarChart2, FileText, UserCheck, Key, Settings,
-  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download, MessageSquare
+  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download, MessageSquare, ClipboardCheck
 } from 'lucide-react';
 
 export default function App() {
@@ -187,7 +188,7 @@ export default function App() {
     
     // Cashiers can only access POS terminal, Customer list, Shifts, and general session lock
     if (role === 'cashier') {
-      return ['pos', 'customers', 'shifts', 'warranty', 'reports', 'messaging'].includes(view);
+      return ['pos', 'customers', 'shifts', 'warranty', 'reports', 'messaging', 'stocktake'].includes(view);
     }
     
     return false;
@@ -197,6 +198,7 @@ export default function App() {
   const menuItems = [
     { id: 'pos', name: 'POS Terminal', icon: <ShoppingCart size={18} /> },
     { id: 'inventory', name: 'Inventory Management', icon: <Archive size={18} /> },
+    { id: 'stocktake', name: 'Stocktake & Counts', icon: <ClipboardCheck size={18} /> },
     { id: 'purchases', name: 'Purchases / PO', icon: <Truck size={18} /> },
     { id: 'sales_history', name: 'Sales History', icon: <Clock size={18} /> },
     { id: 'returns', name: 'Returns & Refunds', icon: <RefreshCw size={18} /> },
@@ -429,6 +431,12 @@ export default function App() {
           )}
           {activeView === 'purchases' && (
             <PurchasesModule 
+              onAddLog={handleAddLog} 
+            />
+          )}
+          {activeView === 'stocktake' && (
+            <StocktakeModule 
+              currentUser={currentUser}
               onAddLog={handleAddLog} 
             />
           )}

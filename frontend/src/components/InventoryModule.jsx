@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X } from 'lucide-react';
+import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer } from 'lucide-react';
+import Barcode from 'react-barcode';
 
 export default function InventoryModule({ onAddLog }) {
   const [products, setProducts] = useState([]);
@@ -22,6 +23,17 @@ export default function InventoryModule({ onAddLog }) {
   const [formStock, setFormStock] = useState(0);
   const [formSerialTracked, setFormSerialTracked] = useState(false);
   const [formSerials, setFormSerials] = useState('');
+
+  const [barcodeToPrint, setBarcodeToPrint] = useState(null);
+
+  useEffect(() => {
+    if (barcodeToPrint) {
+      setTimeout(() => {
+        window.print();
+        setBarcodeToPrint(null);
+      }, 100);
+    }
+  }, [barcodeToPrint]);
 
   // Auto-reorder planning states
   const [suppliers, setSuppliers] = useState([]);
@@ -302,14 +314,25 @@ export default function InventoryModule({ onAddLog }) {
                         <span style={{ color: 'var(--text-dark)', fontSize: '0.75rem' }}>OFF</span>
                       )}
                     </td>
-                    <td>
+                    <td style={{ display: 'flex', gap: '0.5rem' }}>
                       <button 
                         className="cyber-button"
                         style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
                         onClick={() => openDrawer(prod)}
+                        title="Edit Product"
                       >
-                        <Edit3 size={12} /> Edit
+                        <Edit3 size={12} />
                       </button>
+                      {prod.barcode && (
+                        <button 
+                          className="cyber-button btn-cyan"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                          onClick={() => setBarcodeToPrint(prod)}
+                          title="Print Barcode"
+                        >
+                          <Printer size={12} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -545,9 +568,19 @@ export default function InventoryModule({ onAddLog }) {
               </button>
             </div>
           </div>
+        </form>
+      </div>
+      
+      {/* Hidden Print Section for Barcodes */}
+      {barcodeToPrint && (
+        <div className="print-only">
+          <div style={{ textAlign: 'center' }}>
+            <h4>{barcodeToPrint.name}</h4>
+            <Barcode value={barcodeToPrint.barcode} width={2} height={50} fontSize={14} />
+            <p>KES {Number(barcodeToPrint.retail_price).toLocaleString()}</p>
+          </div>
         </div>
       )}
-
     </div>
   );
 }

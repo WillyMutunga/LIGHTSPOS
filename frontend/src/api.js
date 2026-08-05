@@ -219,6 +219,26 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  // Expenses
+  getExpenses: () => request('/expenses/'),
+  createExpense: (expense) => request('/expenses/', {
+    method: 'POST',
+    body: JSON.stringify(expense)
+  }),
+
+  // Stock Adjustments
+  getStockAdjustments: () => request('/stock-adjustments/'),
+  createStockAdjustment: (adjustment) => request('/stock-adjustments/', {
+    method: 'POST',
+    body: JSON.stringify(adjustment)
+  }),
+
+  // Sales Update
+  updateSale: (id, payload) => request(`/sales/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  }),
+
   // Offline Sync Manager
   syncOfflineSales: async () => {
     if (!navigator.onLine) return;

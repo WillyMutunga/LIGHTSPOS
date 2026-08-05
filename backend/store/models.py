@@ -102,7 +102,12 @@ class Shift(models.Model):
 
 
 class Sale(models.Model):
+    SALE_STATUS_CHOICES = (
+        ('completed', 'Completed'),
+        ('quotation', 'Quotation'),
+    )
     shift = models.ForeignKey(Shift, on_delete=models.PROTECT, related_name='sales')
+    status = models.CharField(max_length=20, choices=SALE_STATUS_CHOICES, default='completed')
     customer = models.ForeignKey(Customer, null=True, blank=True, on_delete=models.SET_NULL, related_name='sales')
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT, related_name='sales')
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -181,3 +186,32 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.action} @ {self.timestamp}"
+
+
+class Expense(models.Model):
+    shift = models.ForeignKey(Shift, on_delete=models.CASCADE, related_name='expenses')
+    cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Expense: KES {self.amount} - {self.reason}"
+
+
+class StockAdjustment(models.Model):
+    ADJUSTMENT_TYPES = (
+        ('shrinkage', 'Shrinkage / Loss'),
+        ('damage', 'Damage'),
+        ('correction', 'Inventory Correction'),
+    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='adjustments')
+    user = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
+    previous_quantity = models.IntegerField()
+    new_quantity = models.IntegerField()
+    reason = models.CharField(max_length=50, choices=ADJUSTMENT_TYPES)
+    notes = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Adjustment for {self.product.name} ({self.previous_quantity} -> {self.new_quantity})"

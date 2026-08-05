@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     StoreUser, Category, Product, Customer, Supplier,
     Shift, Sale, SaleItem, PurchaseOrder, PurchaseOrderItem,
-    ReturnRefund, AuditLog, CustomerDebtLedger
+    ReturnRefund, AuditLog, CustomerDebtLedger, Expense, StockAdjustment
 )
 
 class StoreUserSerializer(serializers.ModelSerializer):
@@ -113,6 +113,25 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class CustomerDebtLedgerSerializer(serializers.ModelSerializer):
+    customer_name = serializers.ReadOnlyField(source='customer.name')
+
     class Meta:
         model = CustomerDebtLedger
-        fields = ['id', 'customer', 'sale', 'amount', 'transaction_type', 'timestamp', 'notes']
+        fields = ['id', 'customer', 'customer_name', 'sale', 'amount', 'transaction_type', 'timestamp', 'notes']
+
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    cashier_name = serializers.ReadOnlyField(source='cashier.name')
+
+    class Meta:
+        model = Expense
+        fields = ['id', 'shift', 'cashier', 'cashier_name', 'amount', 'reason', 'timestamp']
+
+
+class StockAdjustmentSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+    user_name = serializers.ReadOnlyField(source='user.name')
+
+    class Meta:
+        model = StockAdjustment
+        fields = ['id', 'product', 'product_name', 'user', 'user_name', 'previous_quantity', 'new_quantity', 'reason', 'notes', 'timestamp']
