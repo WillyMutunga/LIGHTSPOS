@@ -20,8 +20,8 @@ export default function StocktakeModule({ currentUser, onAddLog }) {
         api.getProducts(),
         api.getStockAdjustments()
       ]);
-      setProducts(await prodsRes.json());
-      setAdjustments(await adjsRes.json());
+      setProducts(prodsRes);
+      setAdjustments(adjsRes);
     } catch (err) {
       console.error(err);
       alert('Failed to load stock data');
@@ -58,7 +58,7 @@ export default function StocktakeModule({ currentUser, onAddLog }) {
       };
 
       const res = await api.createStockAdjustment(payload);
-      if (!res.ok) throw new Error('Failed to save adjustment');
+      if (!res) throw new Error('Failed to save adjustment');
 
       onAddLog('STOCK_ADJUST', `Adjusted ${selectedProduct.name} stock to ${physicalCount}`);
       
