@@ -547,6 +547,201 @@ export default function InventoryModule({ onAddLog }) {
                         <td style={{ textAlign: 'right' }}>KES {Number(item.unit_cost).toLocaleString()}</td>
                       </tr>
                     ))
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label className="cyber-label">Barcode / SKU Identifier</label>
+            <input 
+              type="text" 
+              className="cyber-input cyber-input-mono" 
+              required
+              value={formBarcode}
+              onChange={(e) => setFormBarcode(e.target.value)}
+              disabled={editingProduct}
+            />
+          </div>
+
+          <div>
+            <label className="cyber-label">Product Name</label>
+            <input 
+              type="text" 
+              className="cyber-input" 
+              required
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="cyber-label">Description</label>
+            <textarea 
+              className="cyber-input" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={formDesc}
+              onChange={(e) => setFormDesc(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label className="cyber-label">Category</label>
+              <select 
+                className="cyber-input"
+                required
+                value={formCat}
+                onChange={(e) => setFormCat(e.target.value)}
+              >
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="cyber-label">Stock Quantity</label>
+              <input 
+                type="number" 
+                className="cyber-input cyber-input-mono"
+                required
+                min="0"
+                value={formStock}
+                onChange={(e) => setFormStock(Number(e.target.value))}
+                disabled={formSerialTracked && editingProduct} // In serial-tracked editing, stock must be modified by serial adding
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label className="cyber-label">Cost Price (KES)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                className="cyber-input cyber-input-mono" 
+                required
+                value={formCost}
+                onChange={(e) => setFormCost(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="cyber-label">Retail Price (KES)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                className="cyber-input cyber-input-mono" 
+                required
+                value={formRetail}
+                onChange={(e) => setFormRetail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ padding: '0.75rem', background: 'var(--bg-darker)', borderRadius: '2px', border: '1px solid var(--border-muted)', marginTop: '0.5rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                style={{ transform: 'scale(1.2)' }}
+                checked={formSerialTracked}
+                onChange={(e) => {
+                  setFormSerialTracked(e.target.checked);
+                  if (e.target.checked && !editingProduct) setFormStock(0); // If serial tracking active, qty will drive from count of serials
+                }}
+              />
+              <span className="cyber-label" style={{ margin: 0 }}>Enable Unique Serial Number Tracking</span>
+            </label>
+          </div>
+
+          {formSerialTracked && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <label className="cyber-label">Active Stock Serial Numbers (Comma Separated)</label>
+              <textarea 
+                className="cyber-input cyber-input-mono" 
+                style={{ minHeight: '100px', fontSize: '0.85rem' }}
+                placeholder="e.g. SN-9812A, SN-9812B, SN-9812C"
+                value={formSerials}
+                onChange={(e) => {
+                  setFormSerials(e.target.value);
+                  const items = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                  setFormStock(items.length);
+                }}
+              />
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                Note: Total stock count will automatically lock to <strong>{formStock}</strong> to match serials.
+              </p>
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className="cyber-button btn-lime" 
+            style={{ marginTop: '1.5rem', width: '100%', justifyContent: 'center' }}
+          >
+            <Save size={16} /> Save Product SKU
+          </button>
+        </form>
+      </div>
+
+      {/* Auto-Reorder PO planner Modal */}
+      {isReorderModalOpen && (
+        <div className="cyber-modal-overlay">
+          <div className="cyber-modal" style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <h3 className="cyber-title" style={{ fontSize: '1.25rem' }}>Auto-Reorder Procurement Planner</h3>
+              <p className="cyber-subtitle">Review low stock items and group-schedule purchase orders to suppliers.</p>
+            </div>
+
+            <div className="cyber-table-container" style={{ background: 'var(--bg-darker)', maxHeight: '350px', overflowY: 'auto' }}>
+              <table className="cyber-table cyber-table-mono" style={{ fontSize: '0.85rem' }}>
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th style={{ textAlign: 'center' }}>In Stock</th>
+                    <th style={{ textAlign: 'center' }}>Reorder Qty</th>
+                    <th>Supplier Partner</th>
+                    <th style={{ textAlign: 'right' }}>Est. Cost (ea)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reorderItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                        No low stock alerts detected. All catalog items have sufficient stock level.
+                      </td>
+                    </tr>
+                  ) : (
+                    reorderItems.map((item, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontFamily: 'var(--font-sans)', fontWeight: 500 }}>{item.product.name}</td>
+                        <td style={{ textAlign: 'center', color: 'var(--alert-orange)' }}>{item.product.stock_quantity}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="number" 
+                            className="cyber-input cyber-input-mono"
+                            style={{ width: '70px', padding: '0.1rem 0.3rem', textAlign: 'center' }}
+                            value={item.quantity}
+                            onChange={(e) => updateReorderItem(idx, 'quantity', Number(e.target.value))}
+                          />
+                        </td>
+                        <td>
+                          <select 
+                            className="cyber-input"
+                            style={{ padding: '0.1rem 0.5rem', height: 'auto' }}
+                            value={item.supplierId}
+                            onChange={(e) => updateReorderItem(idx, 'supplierId', Number(e.target.value))}
+                          >
+                            <option value="">-- Assign Supplier --</option>
+                            {suppliers.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>KES {Number(item.unit_cost).toLocaleString()}</td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -568,8 +763,8 @@ export default function InventoryModule({ onAddLog }) {
               </button>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      )}
       
       {/* Hidden Print Section for Barcodes */}
       {barcodeToPrint && (
