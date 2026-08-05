@@ -33,7 +33,10 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
 
         // Calculate expenses
         const expRes = await api.getExpenses();
-        const expList = expRes.filter(e => e.shift === activeShift.id);
+        let expList = expRes.filter(e => e.shift === activeShift.id);
+        if (currentUser.role === 'cashier') {
+          expList = expList.filter(e => e.cashier === currentUser.id);
+        }
         setExpenses(expList);
         setTotalExpenses(expList.reduce((sum, e) => sum + Number(e.amount), 0));
       }
