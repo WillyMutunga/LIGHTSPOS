@@ -236,7 +236,7 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
 
       </div>
 
-      {activeShift && currentUser.role !== 'cashier' && (
+      {activeShift && (
         <div className="cyber-card" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <h3 className="cyber-title" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Shift Expenses & Payouts</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
