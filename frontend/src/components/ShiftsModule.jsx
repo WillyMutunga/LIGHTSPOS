@@ -111,7 +111,7 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '100%' }}>
       
       {/* Header */}
       <div>
