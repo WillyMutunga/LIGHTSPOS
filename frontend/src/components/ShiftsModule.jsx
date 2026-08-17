@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { DollarSign, ShieldAlert, CheckCircle, RefreshCw, LogIn, LogOut } from 'lucide-react';
+import { DollarSign, ShieldAlert, CheckCircle, RefreshCw, LogIn, LogOut, Trash2 } from 'lucide-react';
 
 export default function ShiftsModule({ activeShift, currentUser, onShiftStatusChange, onAddLog }) {
   const [shifts, setShifts] = useState([]);
@@ -42,6 +42,21 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteShift = async (shiftId) => {
+    if (!window.confirm(`Are you sure you want to delete Shift #${shiftId}? This action cannot be undone.`)) return;
+    
+    setLoading(true);
+    try {
+      await api.deleteShift(shiftId);
+      onAddLog('SHIFT_DELETED', `Deleted Shift #${shiftId}`);
+      loadShifts();
+    } catch (err) {
+      alert(`Failed to delete shift: ${err.message}. Make sure there are no sales or expenses attached to this shift before deleting.`);
     } finally {
       setLoading(false);
     }
@@ -218,6 +233,7 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
                   <th style={{ textAlign: 'right' }}>Expected</th>
                   <th style={{ textAlign: 'right' }}>Actual</th>
                   <th style={{ textAlign: 'right' }}>Variance</th>
+                  {currentUser.role !== 'cashier' && <th style={{ width: '40px' }}></th>}
                 </tr>
               </thead>
               <tbody>
@@ -230,6 +246,18 @@ export default function ShiftsModule({ activeShift, currentUser, onShiftStatusCh
                     <td style={{ textAlign: 'right', color: Number(shift.variance) < 0 ? 'var(--alert-orange)' : Number(shift.variance) > 0 ? 'var(--success-lime)' : 'var(--text-main)' }}>
                       KES {Number(shift.variance).toLocaleString()}
                     </td>
+                    {currentUser.role !== 'cashier' && (
+                      <td style={{ textAlign: 'right' }}>
+                        <button 
+                          className="cyber-button btn-orange" 
+                          style={{ padding: '0.2rem', minWidth: 'auto', border: 'none' }}
+                          onClick={() => handleDeleteShift(shift.id)}
+                          title="Delete Shift"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -143,6 +143,7 @@ export const api = {
 
   // Shifts
   getShifts: () => request('/shifts/'),
+  deleteShift: (id) => request(`/shifts/${id}/`, { method: 'DELETE' }),
   openShift: (cashierId, startingCash) => request('/shifts/open_shift/', {
     method: 'POST',
     body: JSON.stringify({ cashier: cashierId, starting_cash: startingCash })
