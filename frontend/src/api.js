@@ -155,6 +155,7 @@ export const api = {
 
   // Sales
   getSales: () => request('/sales/'),
+  deleteSale: (id) => request(`/sales/${id}/`, { method: 'DELETE' }),
   checkout: async (checkoutData) => {
     try {
       return await request('/sales/checkout/', {

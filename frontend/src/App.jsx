@@ -441,7 +441,7 @@ export default function App() {
             />
           )}
           {activeView === 'sales_history' && (
-            <SalesHistoryModule />
+            <SalesHistoryModule currentUser={currentUser} />
           )}
           {activeView === 'returns' && (
             <ReturnsModule 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Search, FileText, Printer, Calendar } from 'lucide-react';
+import { Search, FileText, Printer, Calendar, Trash2 } from 'lucide-react';
 
-export default function SalesHistoryModule() {
+export default function SalesHistoryModule({ currentUser }) {
   const [sales, setSales] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState(null);
+  const [selectedSales, setSelectedSales] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadSales();
@@ -15,8 +17,49 @@ export default function SalesHistoryModule() {
     try {
       const res = await api.getSales();
       setSales(res);
+      setSelectedSales([]);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteSale = async (id) => {
+    if (!window.confirm(`Are you sure you want to delete Sale #${id}? This action cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      await api.deleteSale(id);
+      await loadSales();
+    } catch (err) {
+      alert(`Failed to delete sale: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSales.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedSales.length} selected sales? This action cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      await Promise.all(selectedSales.map(id => api.deleteSale(id)));
+      await loadSales();
+    } catch (err) {
+      alert(`Failed to delete some or all sales: ${err.message}`);
+      await loadSales();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelectSale = (id) => {
+    setSelectedSales(prev => prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedSales.length === filteredSales.length) {
+      setSelectedSales([]);
+    } else {
+      setSelectedSales(filteredSales.map(s => s.id));
     }
   };
 
@@ -38,7 +81,16 @@ export default function SalesHistoryModule() {
           <p className="cyber-subtitle">Review previous cash desk receipts and transaction details.</p>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {currentUser.role !== 'cashier' && selectedSales.length > 0 && (
+            <button 
+              className="cyber-button btn-orange" 
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 size={16} /> Delete Selected ({selectedSales.length})
+            </button>
+          )}
           <input 
             type="text" 
             className="cyber-input"
@@ -55,6 +107,16 @@ export default function SalesHistoryModule() {
         <table className="cyber-table cyber-table-mono">
           <thead>
             <tr>
+              {currentUser.role !== 'cashier' && (
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input 
+                    type="checkbox" 
+                    className="cyber-checkbox"
+                    checked={selectedSales.length > 0 && selectedSales.length === filteredSales.length}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+              )}
               <th>Receipt ID</th>
               <th>Timestamp</th>
               <th>Customer</th>
@@ -62,18 +124,29 @@ export default function SalesHistoryModule() {
               <th style={{ textAlign: 'right' }}>Total amount</th>
               <th style={{ textAlign: 'center' }}>Payment Mode</th>
               <th style={{ width: '100px', textAlign: 'center' }}>Receipt</th>
+              {currentUser.role !== 'cashier' && <th style={{ width: '40px', textAlign: 'center' }}>Action</th>}
             </tr>
           </thead>
           <tbody>
             {filteredSales.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                <td colSpan={currentUser.role !== 'cashier' ? "9" : "7"} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                   No receipts matching query found.
                 </td>
               </tr>
             ) : (
               filteredSales.map(sale => (
                 <tr key={sale.id}>
+                  {currentUser.role !== 'cashier' && (
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        className="cyber-checkbox"
+                        checked={selectedSales.includes(sale.id)}
+                        onChange={() => toggleSelectSale(sale.id)}
+                      />
+                    </td>
+                  )}
                   <td>#{sale.id}</td>
                   <td>{new Date(sale.timestamp).toLocaleString()}</td>
                   <td style={{ fontFamily: 'var(--font-sans)', fontWeight: 500 }}>{sale.customer_name || 'Walk-in'}</td>
@@ -82,7 +155,7 @@ export default function SalesHistoryModule() {
                   <td style={{ textAlign: 'center' }}>
                     <span className="cyber-badge badge-cyan" style={{ fontSize: '0.75rem' }}>{sale.payment_method}</span>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     <button 
                       className="cyber-button no-print"
                       style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
@@ -91,6 +164,19 @@ export default function SalesHistoryModule() {
                       <FileText size={12} /> View
                     </button>
                   </td>
+                  {currentUser.role !== 'cashier' && (
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="cyber-button btn-orange no-print"
+                        style={{ padding: '0.2rem', minWidth: 'auto', border: 'none' }}
+                        onClick={() => handleDeleteSale(sale.id)}
+                        disabled={isDeleting}
+                        title="Delete Sale"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
