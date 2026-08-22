@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    handle_send_sms,
+    handle_send_sms, ShopViewSet,
     StoreUserViewSet, CategoryViewSet, ProductViewSet,
     CustomerViewSet, SupplierViewSet, ShiftViewSet,
     SaleViewSet, PurchaseOrderViewSet, ReturnRefundViewSet,
@@ -10,6 +10,7 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register(r'shops', ShopViewSet, basename='shop')
 router.register(r'users', StoreUserViewSet, basename='user')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'products', ProductViewSet, basename='product')

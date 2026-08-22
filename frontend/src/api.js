@@ -46,10 +46,16 @@ async function request(path, options = {}) {
 
 export const api = {
   // Users/Auth
-  loginPin: (pin) => request('/users/login_pin/', {
-    method: 'POST',
-    body: JSON.stringify({ pin })
-  }),
+  loginPin: async (pin) => {
+    return request('/users/login_pin/', {
+      method: 'POST',
+      body: JSON.stringify({ pin })
+    });
+  },
+
+  getShops: async () => {
+    return request('/shops/');
+  },
   getUsers: () => request('/users/'),
   createUser: (user) => request('/users/', {
     method: 'POST',

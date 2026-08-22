@@ -39,6 +39,7 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [shops, setShops] = useState([]);
 
   // Update clock every second
   useEffect(() => {
@@ -103,12 +104,28 @@ export default function App() {
       if (currentUser.shop) {
         setShopId(currentUser.shop);
       }
+      
+      if (currentUser.role === 'admin') {
+        api.getShops().then(data => setShops(data)).catch(console.error);
+      }
+
       api.getShifts().then(shifts => {
         const open = shifts.find(s => s.is_open);
         if (open) setActiveShift(open);
       }).catch(err => console.error(err));
     }
   }, [currentUser]);
+
+  const handleShopChange = (e) => {
+    const newShopId = e.target.value;
+    setShopId(newShopId);
+    setCurrentUser({...currentUser, shop: newShopId, shop_name: shops.find(s => s.id == newShopId)?.name});
+    // Hard reload the active view to refresh data
+    const current = activeView;
+    setActiveView('');
+    setTimeout(() => setActiveView(current), 50);
+  };
+
 
   const submitPin = async (pin) => {
     if (!pin.trim()) return;
@@ -412,10 +429,25 @@ export default function App() {
             )}
 
             {/* Logged in User Profile Info */}
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name} {currentUser.shop_name ? `- ${currentUser.shop_name}` : ''}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                {currentUser.role} GROUP
+            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {currentUser.role === 'admin' && shops.length > 0 ? (
+                <select 
+                  className="cyber-input" 
+                  style={{ padding: '0.25rem 0.5rem', width: 'auto', fontSize: '0.8rem' }}
+                  value={currentUser.shop || ''}
+                  onChange={handleShopChange}
+                >
+                  <option value="">All Shops</option>
+                  {shops.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              ) : null}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name} {currentUser.shop_name && currentUser.role !== 'admin' ? `- ${currentUser.shop_name}` : ''}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  {currentUser.role} GROUP
+                </div>
               </div>
             </div>
           </div>

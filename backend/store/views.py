@@ -48,6 +48,10 @@ class ShopFilterMixin:
                 pass
         serializer.save()
 
+class ShopViewSet(viewsets.ModelViewSet):
+    queryset = Shop.objects.all()
+    serializer_class = ShopSerializer
+
 class StoreUserViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = StoreUser.objects.all()
     serializer_class = StoreUserSerializer
