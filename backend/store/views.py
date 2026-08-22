@@ -13,7 +13,7 @@ from .models import (
     ReturnRefund, AuditLog, CustomerDebtLedger, Expense, StockAdjustment
 )
 from .serializers import (
-    StoreUserSerializer, CategorySerializer, ProductSerializer,
+    ShopSerializer, StoreUserSerializer, CategorySerializer, ProductSerializer,
     CustomerSerializer, SupplierSerializer, ShiftSerializer,
     SaleSerializer, PurchaseOrderSerializer, ReturnRefundSerializer,
     AuditLogSerializer, CustomerDebtLedgerSerializer, ExpenseSerializer, StockAdjustmentSerializer
