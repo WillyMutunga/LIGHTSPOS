@@ -130,7 +130,7 @@ export default function InventoryModule({ onAddLog }) {
       setFormSerials(product.serial_numbers || '');
     } else {
       setEditingProduct(null);
-      setFormBarcode('');
+      setFormBarcode(Math.floor(10000000 + Math.random() * 90000000).toString());
       setFormName('');
       setFormDesc('');
       setFormCat(categories[0]?.id || '');
