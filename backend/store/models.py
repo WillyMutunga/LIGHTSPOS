@@ -1,5 +1,14 @@
 from django.db import models
 
+class Shop(models.Model):
+    name = models.CharField(max_length=100)
+    address = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
 class StoreUser(models.Model):
     ROLE_CHOICES = (
         ('admin', 'Administrator'),
@@ -10,21 +19,27 @@ class StoreUser(models.Model):
     pin = models.CharField(max_length=10, unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='cashier')
     is_active = models.BooleanField(default=True)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='users')
 
     def __str__(self):
         return f"{self.name} ({self.get_role_display()})"
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='categories')
+
+    class Meta:
+        unique_together = ('name', 'shop')
 
     def __str__(self):
         return self.name
 
 
 class Product(models.Model):
-    barcode = models.CharField(max_length=100, unique=True, db_index=True)
+    barcode = models.CharField(max_length=100, db_index=True)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
@@ -34,6 +49,9 @@ class Product(models.Model):
     stock_quantity = models.IntegerField(default=0)
     serial_tracked = models.BooleanField(default=False)
     serial_numbers = models.TextField(blank=True, help_text="Comma-separated list of active serial numbers in stock")
+
+    class Meta:
+        unique_together = ('barcode', 'shop')
 
     def get_serials_list(self):
         if not self.serial_numbers:
@@ -49,10 +67,14 @@ class Product(models.Model):
 
 class Customer(models.Model):
     name = models.CharField(max_length=150)
-    phone = models.CharField(max_length=50, unique=True, db_index=True)
+    phone = models.CharField(max_length=50, db_index=True)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='customers')
     email = models.CharField(max_length=100, blank=True)
     loyalty_points = models.IntegerField(default=0)
     outstanding_debt = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    class Meta:
+        unique_together = ('phone', 'shop')
 
     def __str__(self):
         return self.name
@@ -64,6 +86,7 @@ class CustomerDebtLedger(models.Model):
         ('payment', 'Payment Received'),
     )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ledger_entries')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='ledger_entries')
     sale = models.ForeignKey('Sale', null=True, blank=True, on_delete=models.SET_NULL, related_name='debt_ledger')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
@@ -76,6 +99,7 @@ class CustomerDebtLedger(models.Model):
 
 class Supplier(models.Model):
     name = models.CharField(max_length=150)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='suppliers')
     contact_name = models.CharField(max_length=100, blank=True)
     phone = models.CharField(max_length=50, blank=True)
     email = models.CharField(max_length=100, blank=True)
@@ -88,6 +112,7 @@ class Supplier(models.Model):
 
 class Shift(models.Model):
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='shifts')
     open_time = models.DateTimeField(auto_now_add=True)
     close_time = models.DateTimeField(null=True, blank=True)
     starting_cash = models.DecimalField(max_digits=10, decimal_places=2)
@@ -107,6 +132,7 @@ class Sale(models.Model):
         ('quotation', 'Quotation'),
     )
     shift = models.ForeignKey(Shift, on_delete=models.PROTECT, related_name='sales')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='sales')
     status = models.CharField(max_length=20, choices=SALE_STATUS_CHOICES, default='completed')
     customer = models.ForeignKey(Customer, null=True, blank=True, on_delete=models.SET_NULL, related_name='sales')
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT, related_name='sales')
@@ -147,6 +173,7 @@ class PurchaseOrder(models.Model):
         ('Received', 'Received'),
     )
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchase_orders')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='purchase_orders')
     date_ordered = models.DateTimeField(auto_now_add=True)
     date_received = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
@@ -168,6 +195,7 @@ class PurchaseOrderItem(models.Model):
 
 class ReturnRefund(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='returns')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='returns')
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
     reason = models.TextField()
     refund_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -190,6 +218,7 @@ class AuditLog(models.Model):
 
 class Expense(models.Model):
     shift = models.ForeignKey(Shift, on_delete=models.CASCADE, related_name='expenses')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='expenses')
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     reason = models.CharField(max_length=255)
@@ -206,6 +235,7 @@ class StockAdjustment(models.Model):
         ('correction', 'Inventory Correction'),
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='adjustments')
+    shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='adjustments')
     user = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
     previous_quantity = models.IntegerField()
     new_quantity = models.IntegerField()

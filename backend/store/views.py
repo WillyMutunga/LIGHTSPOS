@@ -8,7 +8,7 @@ import decimal
 import json
 
 from .models import (
-    StoreUser, Category, Product, Customer, Supplier,
+    Shop, StoreUser, Category, Product, Customer, Supplier,
     Shift, Sale, SaleItem, PurchaseOrder, PurchaseOrderItem,
     ReturnRefund, AuditLog, CustomerDebtLedger, Expense, StockAdjustment
 )
@@ -19,7 +19,36 @@ from .serializers import (
     AuditLogSerializer, CustomerDebtLedgerSerializer, ExpenseSerializer, StockAdjustmentSerializer
 )
 
-class StoreUserViewSet(viewsets.ModelViewSet):
+class ShopFilterMixin:
+    def get_shop(self):
+        shop_id = self.request.headers.get('X-Shop-ID')
+        if shop_id:
+            try:
+                return Shop.objects.get(id=shop_id)
+            except Shop.DoesNotExist:
+                return None
+        return None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        shop_id = self.request.headers.get('X-Shop-ID')
+        if shop_id:
+            if hasattr(qs.model, 'shop'):
+                return qs.filter(shop_id=shop_id)
+        return qs
+
+    def perform_create(self, serializer):
+        shop_id = self.request.headers.get('X-Shop-ID')
+        if shop_id and hasattr(serializer.Meta.model, 'shop'):
+            try:
+                shop = Shop.objects.get(id=shop_id)
+                serializer.save(shop=shop)
+                return
+            except Shop.DoesNotExist:
+                pass
+        serializer.save()
+
+class StoreUserViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = StoreUser.objects.all()
     serializer_class = StoreUserSerializer
 
@@ -46,12 +75,12 @@ class StoreUserViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid PIN code'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class ProductViewSet(viewsets.ModelViewSet):
+class ProductViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filterset_fields = ['category', 'serial_tracked']
@@ -70,7 +99,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({'error': f'Product with barcode {barcode} not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     search_fields = ['name', 'phone', 'email']
@@ -96,6 +125,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         
         # Create payment ledger entry
         CustomerDebtLedger.objects.create(
+            shop=self.get_shop(),
             customer=customer,
             amount=pay_amount,
             transaction_type='payment',
@@ -114,13 +144,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(customer).data)
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
+class SupplierViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
     search_fields = ['name', 'contact_name', 'phone']
 
 
-class ShiftViewSet(viewsets.ModelViewSet):
+class ShiftViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Shift.objects.all().order_by('-open_time')
     serializer_class = ShiftSerializer
 
@@ -133,7 +163,7 @@ class ShiftViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Cashier ID and starting cash are required'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Check if there is already an open shift
-        active_shifts = Shift.objects.filter(is_open=True)
+        active_shifts = self.get_queryset().filter(is_open=True)
         if active_shifts.exists():
             return Response({
                 'error': 'There is already an active shift. Close it before opening a new one.',
@@ -197,7 +227,7 @@ class ShiftViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(shift).data)
 
 
-class SaleViewSet(viewsets.ModelViewSet):
+class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Sale.objects.all().order_by('-timestamp')
     serializer_class = SaleSerializer
     filterset_fields = ['shift', 'payment_method']
@@ -455,7 +485,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_404_NOT_FOUND)
 
 
-class PurchaseOrderViewSet(viewsets.ModelViewSet):
+class PurchaseOrderViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all().order_by('-date_ordered')
     serializer_class = PurchaseOrderSerializer
 
@@ -545,7 +575,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(po).data)
 
 
-class ReturnRefundViewSet(viewsets.ModelViewSet):
+class ReturnRefundViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = ReturnRefund.objects.all().order_by('-timestamp')
     serializer_class = ReturnRefundSerializer
 
@@ -591,6 +621,7 @@ class ReturnRefundViewSet(viewsets.ModelViewSet):
 
         # Create ReturnRefund
         ret = ReturnRefund.objects.create(
+            shop=self.get_shop(),
             sale=sale,
             cashier=cashier,
             reason=reason,
@@ -733,13 +764,13 @@ def factory_reset_view(request):
     return Response({'status': 'System data reset successful'})
 
 
-class ExpenseViewSet(viewsets.ModelViewSet):
+class ExpenseViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Expense.objects.all().order_by('-timestamp')
     serializer_class = ExpenseSerializer
     filterset_fields = ['shift', 'cashier']
 
 
-class StockAdjustmentViewSet(viewsets.ModelViewSet):
+class StockAdjustmentViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = StockAdjustment.objects.all().order_by('-timestamp')
     serializer_class = StockAdjustmentSerializer
     filterset_fields = ['product', 'user', 'reason']

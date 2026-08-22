@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from './api';
+import { api, setShopId } from './api';
 import './App.css';
 
 // Import components
@@ -100,6 +100,9 @@ export default function App() {
   // Check active shift on load/login
   useEffect(() => {
     if (currentUser) {
+      if (currentUser.shop) {
+        setShopId(currentUser.shop);
+      }
       api.getShifts().then(shifts => {
         const open = shifts.find(s => s.is_open);
         if (open) setActiveShift(open);
@@ -112,6 +115,9 @@ export default function App() {
 
     try {
       const response = await api.loginPin(pin);
+      if (response.user.shop) {
+        setShopId(response.user.shop);
+      }
       setCurrentUser(response.user);
       setIsLocked(false);
       setPinInput('');
@@ -407,7 +413,7 @@ export default function App() {
 
             {/* Logged in User Profile Info */}
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name}</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name} {currentUser.shop_name ? `- ${currentUser.shop_name}` : ''}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                 {currentUser.role} GROUP
               </div>

@@ -1,6 +1,12 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 import { db } from './utils/db';
 
+let currentShopId = null;
+
+export const setShopId = (shopId) => {
+  currentShopId = shopId;
+};
+
 async function request(path, options = {}) {
   const url = `${API_BASE}${path}`;
   
@@ -9,6 +15,10 @@ async function request(path, options = {}) {
     'Content-Type': 'application/json',
     ...(options.headers || {})
   };
+
+  if (currentShopId) {
+    headers['X-Shop-ID'] = currentShopId;
+  }
 
   const config = {
     ...options,

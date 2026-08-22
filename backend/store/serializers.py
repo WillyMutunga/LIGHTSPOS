@@ -1,14 +1,21 @@
 from rest_framework import serializers
 from .models import (
-    StoreUser, Category, Product, Customer, Supplier,
+    Shop, StoreUser, Category, Product, Customer, Supplier,
     Shift, Sale, SaleItem, PurchaseOrder, PurchaseOrderItem,
     ReturnRefund, AuditLog, CustomerDebtLedger, Expense, StockAdjustment
 )
 
+
+class ShopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shop
+        fields = '__all__'
+
 class StoreUserSerializer(serializers.ModelSerializer):
+    shop_name = serializers.ReadOnlyField(source='shop.name')
     class Meta:
         model = StoreUser
-        fields = ['id', 'name', 'pin', 'role', 'is_active']
+        fields = ['id', 'name', 'pin', 'role', 'is_active', 'shop', 'shop_name']
         extra_kwargs = {'pin': {'write_only': True}}
 
 
