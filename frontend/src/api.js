@@ -71,6 +71,7 @@ export const api = {
 
   // Categories
   getCategories: () => request('/categories/'),
+  createCategory: (name) => request('/categories/', { method: 'POST', body: JSON.stringify({ name, description: '' }) }),
 
   // Products
   getProducts: async (search = '', category = '') => {

@@ -392,7 +392,26 @@ export default function InventoryModule({ onAddLog }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label className="cyber-label">Category</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <label className="cyber-label">Category</label>
+                <button 
+                  type="button" 
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                  onClick={async () => {
+                    const name = window.prompt("Enter new category name:");
+                    if (name) {
+                      try {
+                        const newCat = await api.createCategory(name);
+                        const updatedCats = await api.getCategories();
+                        setCategories(updatedCats);
+                        setFormCat(newCat.id);
+                      } catch(e) {
+                        alert("Failed to create category");
+                      }
+                    }
+                  }}
+                >+ Add New</button>
+              </div>
               <select 
                 className="cyber-input"
                 required
