@@ -714,7 +714,27 @@ def run_secret_migrations(request):
     try:
         call_command('makemigrations')
         call_command('migrate')
-        return JsonResponse({'status': 'success', 'message': 'Database migrations completed successfully on the live server.'})
+        
+        # Run Data Migration for Shop 1
+        shop, _ = Shop.objects.get_or_create(
+            name="Main Shop",
+            defaults={'address': "Default HQ Location"}
+        )
+        models_to_update = [
+            StoreUser, Category, Product, Customer, Supplier,
+            Shift, Sale, PurchaseOrder, ReturnRefund, CustomerDebtLedger, 
+            Expense, StockAdjustment
+        ]
+        updated_counts = {}
+        for model in models_to_update:
+            count = model.objects.filter(shop__isnull=True).update(shop=shop)
+            updated_counts[model.__name__] = count
+            
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Database migrations completed successfully on the live server.',
+            'data_migrated': updated_counts
+        })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
 
