@@ -187,7 +187,7 @@ export default function InventoryModule({ onAddLog }) {
   const lowStockCount = products.filter(p => p.stock_quantity > 0 && p.stock_quantity < 10).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '100%' }}>
       
       {/* Dashboard Metrics Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
@@ -239,8 +239,8 @@ export default function InventoryModule({ onAddLog }) {
       </div>
 
       {/* Filter and Add Button Area */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '1rem', flex: 1, flexWrap: 'wrap' }}>
           <input 
             type="text"
             className="cyber-input"
