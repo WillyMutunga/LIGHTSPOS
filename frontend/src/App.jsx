@@ -105,7 +105,7 @@ export default function App() {
         setShopId(currentUser.shop);
       }
       
-      if (currentUser.role === 'admin') {
+      if (currentUser.role === 'admin' || currentUser.role === 'manager') {
         api.getShops().then(data => setShops(data)).catch(console.error);
       }
 
@@ -430,7 +430,7 @@ export default function App() {
 
             {/* Logged in User Profile Info */}
             <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {currentUser.role === 'admin' && shops.length > 0 ? (
+              {(currentUser.role === 'admin' || currentUser.role === 'manager') && shops.length > 0 ? (
                 <select 
                   className="cyber-input" 
                   style={{ padding: '0.25rem 0.5rem', width: 'auto', fontSize: '0.8rem' }}
@@ -444,7 +444,7 @@ export default function App() {
                 </select>
               ) : null}
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name} {currentUser.shop_name && currentUser.role !== 'admin' ? `- ${currentUser.shop_name}` : ''}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.name} {currentUser.shop_name && currentUser.role !== 'admin' && currentUser.role !== 'manager' ? `- ${currentUser.shop_name}` : ''}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                   {currentUser.role} GROUP
                 </div>
