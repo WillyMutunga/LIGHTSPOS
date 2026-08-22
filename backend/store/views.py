@@ -652,37 +652,50 @@ class AnalyticsViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        sales_total = Sale.objects.aggregate(total=Sum('total'))['total'] or 0
-        sales_count = Sale.objects.count()
+        shop_id = request.headers.get('X-Shop-ID')
+        
+        # Base querysets
+        sales_qs = Sale.objects.all()
+        sale_items_qs = SaleItem.objects.all()
+        products_qs = Product.objects.all()
+        suppliers_qs = Supplier.objects.all()
+        
+        if shop_id:
+            sales_qs = sales_qs.filter(shop_id=shop_id)
+            sale_items_qs = sale_items_qs.filter(sale__shop_id=shop_id)
+            products_qs = products_qs.filter(shop_id=shop_id)
+            suppliers_qs = suppliers_qs.filter(shop_id=shop_id)
+
+        sales_total = sales_qs.aggregate(total=Sum('total'))['total'] or 0
+        sales_count = sales_qs.count()
         
         # Calculate cost vs sales to get profit
         # Cost of goods sold (COGS)
         cogs = decimal.Decimal('0.00')
-        sale_items = SaleItem.objects.all()
-        for item in sale_items:
+        for item in sale_items_qs:
             cogs += item.product.cost_price * item.quantity
             
         profit = decimal.Decimal(str(sales_total)) - cogs
         
         # Low stock count (items with quantity < 10)
-        low_stock = Product.objects.filter(stock_quantity__lt=10).count()
+        low_stock = products_qs.filter(stock_quantity__lt=10).count()
         
         # Outstanding supplier balance
-        supplier_balance = Supplier.objects.aggregate(total=Sum('outstanding_balance'))['total'] or 0
+        supplier_balance = suppliers_qs.aggregate(total=Sum('outstanding_balance'))['total'] or 0
         
         # Top 5 products sold
-        top_products_raw = SaleItem.objects.values('product__name', 'product__barcode')\
+        top_products_raw = sale_items_qs.values('product__name', 'product__barcode')\
             .annotate(total_qty=Sum('quantity'), total_revenue=Sum('total_price'))\
             .order_by('-total_qty')[:5]
             
         # Category breakdown
-        category_sales = SaleItem.objects.values('product__category__name')\
+        category_sales = sale_items_qs.values('product__category__name')\
             .annotate(total_revenue=Sum('total_price'), sales_count=Count('id'))\
             .order_by('-total_revenue')
 
         # Recent sales trends (group by date)
         # For simplicity in SQL/SQLite, we group by date parts
-        recent_sales_raw = Sale.objects.values('timestamp__date')\
+        recent_sales_raw = sales_qs.values('timestamp__date')\
             .annotate(revenue=Sum('total'))\
             .order_by('-timestamp__date')[:7]
 

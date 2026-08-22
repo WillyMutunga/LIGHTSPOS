@@ -111,7 +111,7 @@ export default function App() {
 
       api.getShifts().then(shifts => {
         const open = shifts.find(s => s.is_open);
-        if (open) setActiveShift(open);
+        setActiveShift(open || null);
       }).catch(err => console.error(err));
     }
   }, [currentUser]);
