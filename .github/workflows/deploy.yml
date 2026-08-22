@@ -7,13 +7,14 @@ on:
   workflow_dispatch: # Allows manual trigger
 
 jobs:
-  web-deploy:
-    name: Build & Deploy
+  deploy-frontend:
+    name: Deploy Frontend
     runs-on: ubuntu-latest
-    
     steps:
     - name: Get latest code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
@@ -26,7 +27,6 @@ jobs:
         npm install
         npm run build
 
-    # --- DEPLOY FRONTEND ---
     - name: Sync Frontend Files via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -34,10 +34,18 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./frontend/dist/
-        # Fixed path for frontend
         server-dir: ./lightspos.skysoftsystems.co.ke/
+        state-name: .ftp-deploy-sync-state-frontend.json
 
-    # --- DEPLOY BACKEND ---
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get latest code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
     - name: Sync Backend Files via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -45,8 +53,8 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./backend/
-        # Fixed path for backend
         server-dir: ./lightspos.skysoftsystems.co.ke/lightspos_backend/
+        state-name: .ftp-deploy-sync-state-backend.json
         exclude: |
           **/.env
           **/db.sqlite3
