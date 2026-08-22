@@ -8,7 +8,7 @@ export const setShopId = (shopId) => {
 };
 
 async function request(path, options = {}) {
-  const url = `${API_BASE}${path}`;
+  let url = `${API_BASE}${path}`;
   
   // Set JSON headers by default
   const headers = {
@@ -18,6 +18,10 @@ async function request(path, options = {}) {
 
   if (currentShopId) {
     headers['X-Shop-ID'] = currentShopId;
+    if (!options.method || options.method === 'GET') {
+      const sep = url.includes('?') ? '&' : '?';
+      url += `${sep}_shop=${currentShopId}`;
+    }
   }
 
   const config = {
