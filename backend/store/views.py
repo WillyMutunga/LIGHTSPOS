@@ -202,6 +202,21 @@ class SaleViewSet(viewsets.ModelViewSet):
     serializer_class = SaleSerializer
     filterset_fields = ['shift', 'payment_method']
     search_fields = ['id', 'payment_reference', 'customer__name']
+    
+    def destroy(self, request, *args, **kwargs):
+        from django.db.models import ProtectedError
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError as e:
+            return Response(
+                {"detail": "Cannot delete this sale because it has associated records (e.g. returns) that protect it from deletion."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"An error occurred while deleting the sale: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['post'])
     @transaction.atomic
