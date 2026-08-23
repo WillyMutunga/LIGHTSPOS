@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer } from 'lucide-react';
+import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer, Trash2 } from 'lucide-react';
 import Barcode from 'react-barcode';
 
 export default function InventoryModule({ onAddLog }) {
@@ -113,6 +113,18 @@ export default function InventoryModule({ onAddLog }) {
       setCategories(catRes);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDelete = async (product) => {
+    if (window.confirm(`Are you sure you want to delete ${product.name}?`)) {
+      try {
+        await api.deleteProduct(product.id);
+        onAddLog('PRODUCT_DELETE', `Deleted product ${product.name}`);
+        loadData();
+      } catch (err) {
+        alert("Failed to delete product.");
+      }
     }
   };
 
@@ -333,6 +345,14 @@ export default function InventoryModule({ onAddLog }) {
                           <Printer size={12} />
                         </button>
                       )}
+                      <button 
+                        className="cyber-button btn-red"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                        onClick={() => handleDelete(prod)}
+                        title="Delete Product"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -394,23 +414,43 @@ export default function InventoryModule({ onAddLog }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <label className="cyber-label">Category</label>
-                <button 
-                  type="button" 
-                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                  onClick={async () => {
-                    const name = window.prompt("Enter new category name:");
-                    if (name) {
-                      try {
-                        const newCat = await api.createCategory(name);
-                        const updatedCats = await api.getCategories();
-                        setCategories(updatedCats);
-                        setFormCat(newCat.id);
-                      } catch(e) {
-                        alert("Failed to create category");
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                    onClick={async () => {
+                      if (!formCat) return alert("Select a category to edit first");
+                      const currentCat = categories.find(c => c.id == formCat);
+                      const name = window.prompt("Rename category:", currentCat.name);
+                      if (name && name !== currentCat.name) {
+                        try {
+                          await api.updateCategory(formCat, name);
+                          const updatedCats = await api.getCategories();
+                          setCategories(updatedCats);
+                        } catch(e) {
+                          alert("Failed to update category");
+                        }
                       }
-                    }
-                  }}
-                >+ Add New</button>
+                    }}
+                  >Edit</button>
+                  <button 
+                    type="button" 
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                    onClick={async () => {
+                      const name = window.prompt("Enter new category name:");
+                      if (name) {
+                        try {
+                          const newCat = await api.createCategory(name);
+                          const updatedCats = await api.getCategories();
+                          setCategories(updatedCats);
+                          setFormCat(newCat.id);
+                        } catch(e) {
+                          alert("Failed to create category");
+                        }
+                      }
+                    }}
+                  >+ New</button>
+                </div>
               </div>
               <select 
                 className="cyber-input"

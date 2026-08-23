@@ -76,6 +76,7 @@ export const api = {
   // Categories
   getCategories: () => request('/categories/'),
   createCategory: (name) => request('/categories/', { method: 'POST', body: JSON.stringify({ name, description: '' }) }),
+  updateCategory: (id, name) => request(`/categories/${id}/`, { method: 'PATCH', body: JSON.stringify({ name }) }),
 
   // Products
   getProducts: async (search = '', category = '') => {
@@ -107,6 +108,7 @@ export const api = {
     }
   },
   getProductByBarcode: (barcode) => request(`/products/barcode/?barcode=${encodeURIComponent(barcode)}`),
+  deleteProduct: (id) => request(`/products/${id}/`, { method: 'DELETE' }),
   createProduct: (product) => request('/products/', {
     method: 'POST',
     body: JSON.stringify(product)
