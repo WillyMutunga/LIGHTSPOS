@@ -90,6 +90,13 @@ class ProductViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     filterset_fields = ['category', 'serial_tracked']
     search_fields = ['name', 'barcode', 'description']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        missing_cost = self.request.query_params.get('missing_cost')
+        if missing_cost == 'true':
+            return qs.filter(cost_price__lte=0)
+        return qs
+
     @action(detail=False, methods=['get'])
     def barcode(self, request):
         barcode = request.query_params.get('barcode')
