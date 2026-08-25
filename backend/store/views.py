@@ -294,8 +294,12 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
         mixed_mpesa_amount = data.get('mixed_mpesa_amount', 0)
         status_val = data.get('status', 'completed')
 
+        # Extract Shop
+        shop_id = request.headers.get('X-Shop-ID')
+        
         # Create Sale
         sale = Sale.objects.create(
+            shop_id=shop_id,
             shift=shift,
             status=status_val,
             customer=customer,
