@@ -194,7 +194,7 @@ export default function SalesHistoryModule({ currentUser }) {
             <div style={{ textAlign: 'center', borderBottom: '1px dashed #111111', paddingBottom: '1rem', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>Lights Electricals & Electronics</h2>
               <div style={{ fontSize: '0.8rem' }}>Mombasa Road, Nairobi</div>
-              <div style={{ fontSize: '0.8rem' }}>Tel: +254 700 000 000</div>
+              <div style={{ fontSize: '0.8rem' }}>Tel: 0742765445</div>
               <div style={{ fontSize: '0.8rem' }}>VAT PIN: P0123456789</div>
             </div>
 
