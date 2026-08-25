@@ -259,6 +259,15 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @action(detail=False, methods=['get'])
+    def fix_orphans(self, request):
+        from .models import Sale
+        # Temporary endpoint to fix orphans
+        shop_id = request.query_params.get('shop_id', 2)
+        orphans = Sale.objects.filter(shop__isnull=True)
+        count = orphans.update(shop_id=shop_id)
+        return Response({'message': f'Fixed {count} orphan sales to shop_id {shop_id}'})
+
     @action(detail=False, methods=['post'])
     @transaction.atomic
     def checkout(self, request):
