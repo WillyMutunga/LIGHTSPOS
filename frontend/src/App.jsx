@@ -18,12 +18,13 @@ import ShiftsModule from './components/ShiftsModule';
 import SettingsModule from './components/SettingsModule';
 import WarrantyModule from './components/WarrantyModule';
 import MessagingModule from './components/MessagingModule';
+import ExpensesModule from './components/ExpensesModule';
 
 // Icons
 import {
   ShoppingCart, Archive, Truck, Clock, RefreshCw, Users,
   FolderOpen, BarChart2, FileText, UserCheck, Key, Settings,
-  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download, MessageSquare, ClipboardCheck
+  LogOut, Lock, CheckCircle, Wifi, Clock as ClockIcon, Shield, Menu, X, Download, MessageSquare, ClipboardCheck, Receipt
 } from 'lucide-react';
 
 export default function App() {
@@ -225,6 +226,7 @@ export default function App() {
     { id: 'purchases', name: 'Purchases / PO', icon: <Truck size={18} /> },
     { id: 'sales_history', name: 'Sales History', icon: <Clock size={18} /> },
     { id: 'returns', name: 'Returns & Refunds', icon: <RefreshCw size={18} /> },
+    { id: 'expenses', name: 'Shop Expenses', icon: <Receipt size={18} /> },
     { id: 'customers', name: 'Customer Loyalty', icon: <Users size={18} /> },
     { id: 'warranty', name: 'Warranty Checker', icon: <Shield size={18} /> },
     // { id: 'messaging', name: 'Messaging', icon: <MessageSquare size={18} /> },
@@ -406,6 +408,7 @@ export default function App() {
             {activeView === 'purchases' && 'Purchasing & Stock Inward'}
             {activeView === 'sales_history' && 'Sales Audits & Receipts'}
             {activeView === 'returns' && 'Return Registry & Refunds'}
+            {activeView === 'expenses' && 'Shop Expenses & Payouts'}
             {activeView === 'customers' && 'Customer Loyalty Directory'}
             {activeView === 'messaging' && 'Internal Messaging'}
             {activeView === 'suppliers' && 'Supplier Balances Registry'}
@@ -483,6 +486,13 @@ export default function App() {
           )}
           {activeView === 'returns' && (
             <ReturnsModule 
+              currentUser={currentUser} 
+              onAddLog={handleAddLog} 
+            />
+          )}
+          {activeView === 'expenses' && (
+            <ExpensesModule 
+              activeShift={activeShift}
               currentUser={currentUser} 
               onAddLog={handleAddLog} 
             />

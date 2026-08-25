@@ -57,6 +57,42 @@ export default function ReportsModule({ currentUser }) {
     window.print();
   };
 
+  const exportToCSV = () => {
+    if (!reportData) return;
+    
+    let csvContent = '';
+    
+    if (reportType === 'sales' || reportType === 'cashier_daily') {
+      csvContent += 'Receipt ID,Time,Payment Method,Subtotal,Discount,Tax,Total\n';
+      reportData.forEach(sale => {
+        csvContent += `${sale.id},"${new Date(sale.timestamp).toLocaleString()}",${sale.payment_method},${sale.subtotal},${sale.discount},${sale.tax_amount},${sale.total}\n`;
+      });
+    } else if (reportType === 'inventory') {
+      csvContent += 'SKU,Name,Cost Price,Stock Qty,Valuation\n';
+      reportData.forEach(prod => {
+        const val = Number(prod.cost_price) * prod.stock_quantity;
+        csvContent += `${prod.barcode},"${prod.name}",${prod.cost_price},${prod.stock_quantity},${val}\n`;
+      });
+    } else if (reportType === 'shifts') {
+      csvContent += 'Shift ID,Cashier,Open Time,Close Time,Expected Cash,Actual Cash,Variance\n';
+      reportData.forEach(shift => {
+        csvContent += `${shift.id},${shift.cashier_name},"${new Date(shift.open_time).toLocaleString()}","${shift.close_time ? new Date(shift.close_time).toLocaleString() : 'Open'}",${shift.ending_cash || shift.starting_cash},${shift.actual_cash || 0},${shift.variance || 0}\n`;
+      });
+    }
+    
+    if (csvContent) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${reportType}_report_${selectedDate || 'all'}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
       
@@ -68,6 +104,9 @@ export default function ReportsModule({ currentUser }) {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="cyber-button btn-cyan" onClick={exportToCSV} disabled={!reportData}>
+            <Download size={14} /> Export CSV
+          </button>
           <button className="cyber-button" onClick={handlePrint}>
             <Printer size={14} /> Print Report
           </button>

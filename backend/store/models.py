@@ -3,6 +3,10 @@ from django.db import models
 class Shop(models.Model):
     name = models.CharField(max_length=100)
     address = models.TextField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    vat_pin = models.CharField(max_length=50, blank=True)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=16.00)
+    receipt_footer = models.TextField(blank=True, default='Thank you for shopping with us!')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

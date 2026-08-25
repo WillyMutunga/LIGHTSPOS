@@ -938,10 +938,10 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
             {/* Header info */}
             <div style={{ textAlign: 'center', borderBottom: '1px dashed #111111', paddingBottom: '1rem', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>Lights Electricals & Electronics</h2>
-              <div style={{ fontSize: '0.8rem' }}>Mombasa Road, Nairobi</div>
-              <div style={{ fontSize: '0.8rem' }}>Tel: 0742765445</div>
-              <div style={{ fontSize: '0.8rem' }}>VAT PIN: P0123456789</div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>{shopDetails.name}</h2>
+              {shopDetails.address && <div style={{ fontSize: '0.8rem' }}>{shopDetails.address}</div>}
+              {shopDetails.phone && <div style={{ fontSize: '0.8rem' }}>Tel: {shopDetails.phone}</div>}
+              {shopDetails.vat_pin && <div style={{ fontSize: '0.8rem' }}>VAT PIN: {shopDetails.vat_pin}</div>}
             </div>
 
             {/* Receipt metadata */}

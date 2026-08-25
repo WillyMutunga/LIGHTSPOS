@@ -4,6 +4,28 @@ import { Search, FileText, Printer, Calendar, Trash2 } from 'lucide-react';
 
 export default function SalesHistoryModule({ currentUser }) {
   const [sales, setSales] = useState([]);
+  const [shopDetails, setShopDetails] = useState({ name: 'Lights Electricals & Electronics', address: 'Mombasa Road, Nairobi', phone: '0742765445', vat_pin: 'P0123456789', receipt_footer: 'Thank you for shopping with us!', tax_rate: 16 });
+
+  useEffect(() => {
+    const fetchShop = async () => {
+      try {
+        const shops = await api.getShops();
+        const currentShopId = localStorage.getItem('activeShopId');
+        const shop = shops.find(s => s.id === Number(currentShopId)) || shops[0];
+        if (shop) {
+          setShopDetails({
+            name: shop.name || 'Lights Electricals & Electronics',
+            address: shop.address || 'Mombasa Road, Nairobi',
+            phone: shop.phone || '0742765445',
+            vat_pin: shop.vat_pin || 'P0123456789',
+            receipt_footer: shop.receipt_footer || 'Thank you for shopping with us!',
+            tax_rate: shop.tax_rate ? Number(shop.tax_rate) : 16
+          });
+        }
+      } catch (err) { }
+    };
+    fetchShop();
+  }, []);
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState(null);
   const [selectedSales, setSelectedSales] = useState([]);
@@ -192,10 +214,10 @@ export default function SalesHistoryModule({ currentUser }) {
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
             {/* Header info */}
             <div style={{ textAlign: 'center', borderBottom: '1px dashed #111111', paddingBottom: '1rem', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>Lights Electricals & Electronics</h2>
-              <div style={{ fontSize: '0.8rem' }}>Mombasa Road, Nairobi</div>
-              <div style={{ fontSize: '0.8rem' }}>Tel: 0742765445</div>
-              <div style={{ fontSize: '0.8rem' }}>VAT PIN: P0123456789</div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, textTransform: 'uppercase' }}>{shopDetails.name}</h2>
+              {shopDetails.address && <div style={{ fontSize: '0.8rem' }}>{shopDetails.address}</div>}
+              {shopDetails.phone && <div style={{ fontSize: '0.8rem' }}>Tel: {shopDetails.phone}</div>}
+              {shopDetails.vat_pin && <div style={{ fontSize: '0.8rem' }}>VAT PIN: {shopDetails.vat_pin}</div>}
             </div>
 
             {/* Receipt metadata */}
