@@ -198,7 +198,7 @@ class PurchaseOrderItem(models.Model):
 
 
 class ReturnRefund(models.Model):
-    sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='returns')
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='returns')
     shop = models.ForeignKey(Shop, null=True, blank=True, on_delete=models.CASCADE, related_name='returns')
     cashier = models.ForeignKey(StoreUser, on_delete=models.PROTECT)
     reason = models.TextField()
