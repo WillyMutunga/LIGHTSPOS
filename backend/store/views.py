@@ -753,10 +753,9 @@ def run_secret_migrations(request):
         call_command('migrate')
         
         # Run Data Migration for Shop 1
-        shop, _ = Shop.objects.get_or_create(
-            name="Main Shop",
-            defaults={'address': "Default HQ Location"}
-        )
+        shop = Shop.objects.first()
+        if not shop:
+            shop = Shop.objects.create(name="Main Shop", address="Default HQ Location")
         models_to_update = [
             StoreUser, Category, Product, Customer, Supplier,
             Shift, Sale, PurchaseOrder, ReturnRefund, CustomerDebtLedger, 
