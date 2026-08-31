@@ -261,12 +261,23 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def fix_orphans(self, request):
-        from .models import Sale
-        # Temporary endpoint to fix orphans
-        shop_id = request.query_params.get('shop_id', 2)
-        orphans = Sale.objects.filter(shop__isnull=True)
-        count = orphans.update(shop_id=shop_id)
-        return Response({'message': f'Fixed {count} orphan sales to shop_id {shop_id}'})
+        from .models import Sale, Product, Category, StockAdjustment, Shift, Customer, Supplier, StoreUser, ReturnRefund, PurchaseOrder, Expense, CustomerDebtLedger
+        # Temporary endpoint to fix orphans globally
+        shop_id = request.query_params.get('shop_id', 1)
+        
+        models_to_update = [
+            StoreUser, Category, Product, Customer, Supplier,
+            Shift, Sale, PurchaseOrder, ReturnRefund, CustomerDebtLedger, 
+            Expense, StockAdjustment
+        ]
+        
+        counts = {}
+        for model in models_to_update:
+            if hasattr(model, 'shop'):
+                count = model.objects.filter(shop__isnull=True).update(shop_id=shop_id)
+                counts[model.__name__] = count
+                
+        return Response({'message': f'Globally assigned all orphans to shop_id {shop_id}', 'details': counts})
 
     @action(detail=False, methods=['post'])
     @transaction.atomic
