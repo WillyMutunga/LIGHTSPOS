@@ -277,7 +277,14 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
                 count = model.objects.filter(shop__isnull=True).update(shop_id=shop_id)
                 counts[model.__name__] = count
                 
-        return Response({'message': f'Globally assigned all orphans to shop_id {shop_id}', 'details': counts})
+        from django.db.models import Count
+        products_by_shop = list(Product.objects.values('shop_id').annotate(total=Count('id')))
+                
+        return Response({
+            'message': f'Globally assigned all orphans to shop_id {shop_id}', 
+            'details': counts,
+            'products_by_shop': products_by_shop
+        })
 
     @action(detail=False, methods=['post'])
     @transaction.atomic
