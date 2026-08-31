@@ -286,6 +286,25 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
             'products_by_shop': products_by_shop
         })
 
+    @action(detail=False, methods=['get'])
+    def delete_shop_inventory(self, request):
+        from .models import Product, SaleItem, PurchaseOrderItem, ReturnRefund
+        shop_id = request.query_params.get('shop_id')
+        if not shop_id:
+            return Response({'error': 'shop_id is required'})
+            
+        products = Product.objects.filter(shop_id=shop_id)
+        count = products.count()
+        
+        # Manually delete protected relations first so we can delete the products
+        SaleItem.objects.filter(product__shop_id=shop_id).delete()
+        PurchaseOrderItem.objects.filter(product__shop_id=shop_id).delete()
+        ReturnRefund.objects.filter(sale__shop_id=shop_id).delete()
+        
+        products.delete()
+        
+        return Response({'message': f'Successfully deleted {count} products and their associated sales data from shop_id {shop_id}.'})
+
     @action(detail=False, methods=['post'])
     @transaction.atomic
     def checkout(self, request):
