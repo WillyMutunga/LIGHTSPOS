@@ -132,14 +132,17 @@ export default function ReportsModule({ currentUser }) {
               My Daily Z-Report
             </button>
 
+            {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <button 
+                className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
+                onClick={() => setReportType('inventory')}
+              >
+                Inventory Valuation
+              </button>
+            )}
+            
             {currentUser.role === 'admin' && (
               <>
-                <button 
-                  className={`cyber-button ${reportType === 'inventory' ? 'btn-lime' : ''}`}
-                  onClick={() => setReportType('inventory')}
-                >
-                  Inventory Valuation
-                </button>
                 <button 
                   className={`cyber-button ${reportType === 'financial' ? 'btn-lime' : ''}`}
                   onClick={() => setReportType('financial')}
