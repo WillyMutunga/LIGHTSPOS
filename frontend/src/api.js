@@ -60,6 +60,10 @@ export const api = {
   getShops: async () => {
     return request('/shops/');
   },
+  
+  updateShop: async (id, data) => {
+    return request(`/shops/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+  },
   getUsers: () => request('/users/'),
   createUser: (user) => request('/users/', {
     method: 'POST',
