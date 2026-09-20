@@ -4,8 +4,33 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Sum, F, Count
 from django.utils import timezone
+import threading
+from django.core.mail import send_mail
+from django.conf import settings
 import decimal
 import json
+
+def check_and_send_low_stock_alert(product, shop):
+    if not shop or not shop.alert_email:
+        return
+    
+    if product.stock_quantity <= shop.low_stock_threshold:
+        subject = f"LOW STOCK ALERT: {product.name}"
+        message = f"Hello Manager,\n\nThis is an automated alert from Lights POS.\n\nThe stock for {product.name} (SKU: {product.barcode}) has dropped to {product.stock_quantity} units in {shop.name}.\nThis is at or below your warning threshold of {shop.low_stock_threshold}.\n\nPlease restock soon.\n\nLights POS System"
+        
+        def _send():
+            try:
+                send_mail(
+                    subject, 
+                    message, 
+                    settings.DEFAULT_FROM_EMAIL,
+                    [shop.alert_email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                pass
+                
+        threading.Thread(target=_send).start()
 
 from .models import (
     Shop, StoreUser, Category, Product, Customer, Supplier,
@@ -425,6 +450,11 @@ class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
                 # Deduct stock
                 product.stock_quantity -= quantity
                 product.save()
+                
+                # Check low stock email
+                shop = getattr(sale, 'shop', None)
+                if shop:
+                    check_and_send_low_stock_alert(product, shop)
 
             # Create SaleItem
             SaleItem.objects.create(
@@ -874,3 +904,7 @@ class StockAdjustmentViewSet(ShopFilterMixin, viewsets.ModelViewSet):
         product = adjustment.product
         product.stock_quantity = adjustment.new_quantity
         product.save()
+        
+        shop = getattr(adjustment, 'shop', None)
+        if shop:
+            check_and_send_low_stock_alert(product, shop)

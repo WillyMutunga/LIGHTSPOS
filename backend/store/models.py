@@ -7,6 +7,8 @@ class Shop(models.Model):
     vat_pin = models.CharField(max_length=50, blank=True)
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=16.00)
     receipt_footer = models.TextField(blank=True, default='Thank you for shopping with us!')
+    alert_email = models.EmailField(blank=True, null=True, help_text="Email address for low stock alerts")
+    low_stock_threshold = models.IntegerField(default=5, help_text="Trigger alert when stock hits this level")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

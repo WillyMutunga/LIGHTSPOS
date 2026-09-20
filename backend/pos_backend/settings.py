@@ -147,3 +147,12 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
     ]
 }
+
+# SMTP Email Settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'mail.skysoftsystems.co.ke'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = 'info@skysoftsystems.co.ke'
+EMAIL_HOST_PASSWORD = 'William#20'
+DEFAULT_FROM_EMAIL = 'info@skysoftsystems.co.ke'

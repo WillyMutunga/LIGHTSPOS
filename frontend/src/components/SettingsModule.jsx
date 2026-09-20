@@ -11,6 +11,8 @@ export default function SettingsModule({ onAddLog }) {
   const [storeVat, setStoreVat] = useState('');
   const [taxRate, setTaxRate] = useState(16);
   const [receiptFooter, setReceiptFooter] = useState('Thank you for shopping with us!');
+  const [alertEmail, setAlertEmail] = useState('');
+  const [lowStockThreshold, setLowStockThreshold] = useState(5);
   
   const [isResetting, setIsResetting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,6 +31,8 @@ export default function SettingsModule({ onAddLog }) {
           setStoreVat(shop.vat_pin || '');
           setTaxRate(shop.tax_rate ? Number(shop.tax_rate) : 16);
           setReceiptFooter(shop.receipt_footer || 'Thank you for shopping with us!');
+          setAlertEmail(shop.alert_email || '');
+          setLowStockThreshold(shop.low_stock_threshold || 5);
         }
       } catch (err) {
         console.error("Failed to load shop settings", err);
@@ -49,7 +53,9 @@ export default function SettingsModule({ onAddLog }) {
         phone: storePhone,
         vat_pin: storeVat,
         tax_rate: taxRate,
-        receipt_footer: receiptFooter
+        receipt_footer: receiptFooter,
+        alert_email: alertEmail,
+        low_stock_threshold: lowStockThreshold
       });
       onAddLog('SETTINGS_UPDATE', `Updated configuration for shop: ${storeName}`);
       alert("Store configuration successfully saved to the database!");
