@@ -178,6 +178,34 @@ export default function SettingsModule({ onAddLog }) {
                 />
               </div>
 
+              <h3 className="cyber-title" style={{ fontSize: '1.1rem', marginTop: '1.5rem', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
+                <i className="fas fa-bell" style={{ marginRight: '10px' }}></i>
+                Alerts & Notifications
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="cyber-label">Manager Alert Email (For Low Stock)</label>
+                  <input 
+                    type="email" 
+                    className="cyber-input" 
+                    value={alertEmail}
+                    onChange={(e) => setAlertEmail(e.target.value)}
+                    placeholder="manager@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="cyber-label">Low Stock Warning Threshold</label>
+                  <input 
+                    type="number" 
+                    className="cyber-input" 
+                    value={lowStockThreshold}
+                    onChange={(e) => setLowStockThreshold(Number(e.target.value))}
+                    min="0"
+                  />
+                </div>
+              </div>
+
               <button type="submit" disabled={isSaving} className="cyber-button btn-lime" style={{ marginTop: '1rem', alignSelf: 'flex-start' }}>
                 <Save size={14} /> {isSaving ? 'Saving...' : 'Save Configuration'}
               </button>
