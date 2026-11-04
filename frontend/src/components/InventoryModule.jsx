@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer, Trash2 } from 'lucide-react';
+import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer, Trash2, Download, Filter } from 'lucide-react';
 import Barcode from 'react-barcode';
 
 export default function InventoryModule({ onAddLog }) {
@@ -8,6 +8,7 @@ export default function InventoryModule({ onAddLog }) {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [stockFilter, setStockFilter] = useState('all'); // 'all' | 'low' | 'out'
   
   // Drawer states
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -193,6 +194,47 @@ export default function InventoryModule({ onAddLog }) {
     }
   };
 
+  // Filter products by stock status (all, low stock < 10, out of stock = 0)
+  const filteredProducts = products.filter(p => {
+    if (stockFilter === 'low') {
+      return p.stock_quantity > 0 && p.stock_quantity < 10;
+    }
+    if (stockFilter === 'out') {
+      return p.stock_quantity === 0;
+    }
+    return true;
+  });
+
+  const handleExportCSV = () => {
+    if (!filteredProducts || filteredProducts.length === 0) {
+      alert('No products to export.');
+      return;
+    }
+
+    let csvContent = 'Barcode / SKU,Product Name,Category,Cost Price (KES),Retail Price (KES),Stock Qty,Stock Status,Valuation (KES)\n';
+    
+    filteredProducts.forEach(p => {
+      const status = p.stock_quantity === 0 ? 'Out of Stock' : (p.stock_quantity < 10 ? 'Low Stock' : 'In Stock');
+      const valuation = (Number(p.cost_price || 0) * p.stock_quantity).toFixed(2);
+      const name = '"' + (p.name || '').replace(/"/g, '""') + '"';
+      const cat = '"' + (p.category_name || '').replace(/"/g, '""') + '"';
+      const barcode = '"' + (p.barcode || '').replace(/"/g, '""') + '"';
+      
+      csvContent += `${barcode},${name},${cat},${p.cost_price || 0},${p.retail_price || 0},${p.stock_quantity},${status},${valuation}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    const filterSuffix = stockFilter !== 'all' ? `_${stockFilter}_stock` : '';
+    link.setAttribute('download', `inventory_stock_quantities${filterSuffix}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Metrics calculations
   const totalStockVal = products.reduce((sum, p) => sum + (Number(p.cost_price) * p.stock_quantity), 0);
   const totalRetailVal = products.reduce((sum, p) => sum + (Number(p.retail_price) * p.stock_quantity), 0);
@@ -203,14 +245,23 @@ export default function InventoryModule({ onAddLog }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '100%' }}>
       
       {/* Dashboard Metrics Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        <div className="cyber-card">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div 
+          className="cyber-card glow-hover" 
+          style={{ 
+            cursor: 'pointer',
+            border: stockFilter === 'all' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-muted)',
+            background: stockFilter === 'all' ? 'rgba(0, 240, 255, 0.06)' : undefined 
+          }}
+          onClick={() => setStockFilter('all')}
+          title="Click to view all items"
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <label className="cyber-label">Total Unique SKUs</label>
+              <label className="cyber-label" style={{ cursor: 'pointer' }}>Total Unique SKUs</label>
               <div style={{ fontSize: '1.75rem', fontWeight: '800', fontFamily: 'var(--font-mono)' }}>{products.length}</div>
             </div>
-            <Archive size={28} style={{ color: 'var(--text-muted)' }} />
+            <Archive size={28} style={{ color: stockFilter === 'all' ? 'var(--accent-cyan)' : 'var(--text-muted)' }} />
           </div>
         </div>
 
@@ -240,22 +291,52 @@ export default function InventoryModule({ onAddLog }) {
 
         <div 
           className="cyber-card glow-hover" 
-          style={{ cursor: 'pointer', border: '1px solid var(--alert-orange-glow)' }}
-          onClick={openReorderModal}
+          style={{ 
+            cursor: 'pointer', 
+            border: stockFilter === 'low' ? '2px solid var(--alert-orange)' : '1px solid var(--alert-orange-glow)',
+            background: stockFilter === 'low' ? 'rgba(255, 170, 0, 0.08)' : undefined
+          }}
+          onClick={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
+          title="Click to filter low stock items"
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <label className="cyber-label" style={{ color: 'var(--alert-orange)', cursor: 'pointer' }}>Low Stock (Auto-Reorder)</label>
+              <label className="cyber-label" style={{ color: 'var(--alert-orange)', cursor: 'pointer' }}>Low Stock (&lt; 10)</label>
               <div style={{ fontSize: '1.75rem', fontWeight: '800', fontFamily: 'var(--font-mono)', color: 'var(--alert-orange)' }}>{lowStockCount}</div>
             </div>
             <ShieldAlert size={28} style={{ color: 'var(--alert-orange)' }} />
           </div>
+          {lowStockCount > 0 && (
+            <div style={{ marginTop: '0.4rem', textAlign: 'right' }}>
+              <button 
+                type="button"
+                className="cyber-button btn-orange"
+                style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openReorderModal();
+                }}
+                title="Create Purchase Orders for low stock items"
+              >
+                Auto-Reorder
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="cyber-card">
+        <div 
+          className="cyber-card glow-hover" 
+          style={{ 
+            cursor: 'pointer',
+            border: stockFilter === 'out' ? '2px solid #FF3333' : '1px solid var(--border-muted)',
+            background: stockFilter === 'out' ? 'rgba(255, 51, 51, 0.08)' : undefined
+          }}
+          onClick={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
+          title="Click to filter depleted out-of-stock items"
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <label className="cyber-label">Out of Stock</label>
+              <label className="cyber-label" style={{ color: '#FF3333', cursor: 'pointer' }}>Out of Stock (Depleted)</label>
               <div style={{ fontSize: '1.75rem', fontWeight: '800', fontFamily: 'var(--font-mono)', color: '#FF3333' }}>{outOfStockCount}</div>
             </div>
             <ShieldAlert size={28} style={{ color: '#FF3333' }} />
@@ -263,13 +344,13 @@ export default function InventoryModule({ onAddLog }) {
         </div>
       </div>
 
-      {/* Filter and Add Button Area */}
+      {/* Filter and Action Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '1rem', flex: 1, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <input 
             type="text"
             className="cyber-input"
-            style={{ maxWidth: '300px' }}
+            style={{ maxWidth: '260px' }}
             placeholder="Search catalog by name/code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -277,7 +358,7 @@ export default function InventoryModule({ onAddLog }) {
           
           <select 
             className="cyber-input"
-            style={{ maxWidth: '200px' }}
+            style={{ maxWidth: '180px' }}
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
@@ -287,11 +368,65 @@ export default function InventoryModule({ onAddLog }) {
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
+
+          {/* Quick Filter Buttons */}
+          <div style={{ display: 'inline-flex', gap: '0.4rem', background: 'var(--bg-darker)', padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+            <button
+              type="button"
+              className={`cyber-button ${stockFilter === 'all' ? 'btn-lime' : ''}`}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => setStockFilter('all')}
+            >
+              All ({products.length})
+            </button>
+            <button
+              type="button"
+              className={`cyber-button ${stockFilter === 'low' ? 'btn-orange' : ''}`}
+              style={{ 
+                padding: '0.35rem 0.75rem', 
+                fontSize: '0.75rem',
+                borderColor: stockFilter === 'low' ? undefined : 'var(--alert-orange)',
+                color: stockFilter === 'low' ? undefined : 'var(--alert-orange)'
+              }}
+              onClick={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
+            >
+              ⚠️ Low Stock ({lowStockCount})
+            </button>
+            <button
+              type="button"
+              className={`cyber-button ${stockFilter === 'out' ? 'btn-red' : ''}`}
+              style={{ 
+                padding: '0.35rem 0.75rem', 
+                fontSize: '0.75rem',
+                borderColor: stockFilter === 'out' ? undefined : '#FF3333',
+                color: stockFilter === 'out' ? undefined : '#FF3333'
+              }}
+              onClick={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
+            >
+              🚫 Depleted ({outOfStockCount})
+            </button>
+          </div>
         </div>
 
-        <button className="cyber-button btn-lime" onClick={() => openDrawer()}>
-          <Plus size={16} /> Add Product
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button 
+            type="button"
+            className="cyber-button" 
+            style={{ borderColor: 'var(--accent-cyan)' }}
+            onClick={handleExportCSV}
+            title="Download visible stock list as CSV / Excel"
+          >
+            <Download size={14} /> Download Stock CSV
+          </button>
+
+          <button 
+            type="button"
+            className="cyber-button btn-lime" 
+            onClick={() => openDrawer()}
+          >
+            <Plus size={14} /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Main Stock Table */}
@@ -310,14 +445,14 @@ export default function InventoryModule({ onAddLog }) {
             </tr>
           </thead>
           <tbody>
-            {products.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                  No products found.
+                  {products.length === 0 ? 'No products found.' : `No products matching ${stockFilter === 'low' ? 'Low Stock' : stockFilter === 'out' ? 'Out of Stock' : 'the filter'}.`}
                 </td>
               </tr>
             ) : (
-              products.map(prod => {
+              filteredProducts.map(prod => {
                 const isOutOfStock = prod.stock_quantity === 0;
                 const isLowStock = prod.stock_quantity > 0 && prod.stock_quantity < 10;
                 

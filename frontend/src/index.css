@@ -154,6 +154,16 @@ body {
   box-shadow: 0 0 12px var(--success-lime-glow);
 }
 
+.cyber-button.btn-red {
+  color: #ff4d4d;
+  border-color: #ff4d4d;
+}
+.cyber-button.btn-red:hover {
+  background: #ff4d4d;
+  color: var(--bg-darker);
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.4);
+}
+
 /* Technical inputs */
 .cyber-input {
   background: var(--bg-darker);
