@@ -108,6 +108,46 @@ class CategoryViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        product_count = Product.objects.filter(category=instance).count()
+        if product_count > 0:
+            return Response(
+                {'error': f"Cannot delete '{instance.name}' because {product_count} product(s) are assigned to it. Please merge or reassign its products first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'])
+    def merge(self, request):
+        source_id = request.data.get('source_category_id')
+        target_id = request.data.get('target_category_id')
+
+        if not source_id or not target_id:
+            return Response({'error': 'Both source_category_id and target_category_id are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if str(source_id) == str(target_id):
+            return Response({'error': 'Source and target categories cannot be the same.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            source_cat = Category.objects.get(id=source_id)
+            target_cat = Category.objects.get(id=target_id)
+        except Category.DoesNotExist:
+            return Response({'error': 'One of the specified categories was not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Reassign all products from source to target
+        products_count = Product.objects.filter(category=source_cat).count()
+        Product.objects.filter(category=source_cat).update(category=target_cat)
+
+        source_name = source_cat.name
+        target_name = target_cat.name
+        source_cat.delete()
+
+        return Response({
+            'message': f"Successfully merged '{source_name}' into '{target_name}'. Reassigned {products_count} product(s).",
+            'products_reassigned': products_count
+        }, status=status.HTTP_200_OK)
+
 
 class ProductViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Product.objects.all()

@@ -81,6 +81,11 @@ export const api = {
   getCategories: () => request('/categories/'),
   createCategory: (name) => request('/categories/', { method: 'POST', body: JSON.stringify({ name, description: '' }) }),
   updateCategory: (id, name) => request(`/categories/${id}/`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  deleteCategory: (id) => request(`/categories/${id}/`, { method: 'DELETE' }),
+  mergeCategories: (sourceCategoryId, targetCategoryId) => request('/categories/merge/', {
+    method: 'POST',
+    body: JSON.stringify({ source_category_id: sourceCategoryId, target_category_id: targetCategoryId })
+  }),
 
   // Products
   getProducts: async (search = '', category = '') => {

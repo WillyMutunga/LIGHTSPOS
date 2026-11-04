@@ -41,6 +41,15 @@ export default function InventoryModule({ onAddLog }) {
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [reorderItems, setReorderItems] = useState([]);
 
+  // Category Management & Merge states
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [sourceCatId, setSourceCatId] = useState('');
+  const [targetCatId, setTargetCatId] = useState('');
+  const [isMerging, setIsMerging] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editingCatName, setEditingCatName] = useState('');
+
   const openReorderModal = async () => {
     try {
       const supRes = await api.getSuppliers();
@@ -235,6 +244,207 @@ export default function InventoryModule({ onAddLog }) {
     document.body.removeChild(link);
   };
 
+  const handlePrintPDF = () => {
+    if (!filteredProducts || filteredProducts.length === 0) {
+      alert("No products to export.");
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Please allow popups to export the PDF.");
+      return;
+    }
+
+    const activeCatName = selectedCategory 
+      ? (categories.find(c => String(c.id) === String(selectedCategory))?.name || 'Selected Category')
+      : 'All Categories';
+    const activeFilterName = stockFilter === 'low' ? 'Low Stock (< 10)' : stockFilter === 'out' ? 'Out of Stock (0 units)' : 'All Stock';
+
+    const totalQty = filteredProducts.reduce((sum, p) => sum + p.stock_quantity, 0);
+    const totalCostVal = filteredProducts.reduce((sum, p) => sum + (Number(p.cost_price || 0) * p.stock_quantity), 0);
+    const totalRetailVal = filteredProducts.reduce((sum, p) => sum + (Number(p.retail_price || 0) * p.stock_quantity), 0);
+
+    const rowsHtml = filteredProducts.map((p, idx) => {
+      const lineCostVal = Number(p.cost_price || 0) * p.stock_quantity;
+      const statusColor = p.stock_quantity === 0 ? '#b91c1c' : (p.stock_quantity < 10 ? '#b45309' : '#15803d');
+      return `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-family: monospace;">${p.barcode || '-'}</td>
+          <td><strong>${p.name || ''}</strong></td>
+          <td>${p.category_name || '-'}</td>
+          <td style="text-align: right;">KES ${Number(p.cost_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td style="text-align: right;">KES ${Number(p.retail_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td style="text-align: center; font-weight: bold; color: ${statusColor};">${p.stock_quantity}</td>
+          <td style="text-align: right; font-weight: bold;">KES ${lineCostVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Inventory Stock Report - ${new Date().toLocaleDateString()}</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; padding: 12px; font-size: 11px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 12px; }
+            .title { font-size: 18px; font-weight: bold; color: #0f172a; text-transform: uppercase; margin: 0; }
+            .meta { font-size: 11px; color: #475569; margin-top: 4px; }
+            .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+            .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px 12px; }
+            .card-label { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+            .card-value { font-size: 14px; font-weight: bold; color: #0f172a; margin-top: 2px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            th { background: #0f172a; color: #fff; padding: 6px 8px; text-align: left; font-size: 9px; text-transform: uppercase; }
+            td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+            tr:nth-child(even) { background: #f8fafc; }
+            .footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1 class="title">LIGHTS ELECTRICALS - INVENTORY VALUATION &amp; STOCK SHEET</h1>
+              <div class="meta">
+                Generated: ${new Date().toLocaleString()} &nbsp;|&nbsp; 
+                Category: <strong>${activeCatName}</strong> &nbsp;|&nbsp; 
+                Filter: <strong>${activeFilterName}</strong>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-weight: bold; color: #0284c7;">AUDIT COPY</span>
+            </div>
+          </div>
+
+          <div class="summary-cards">
+            <div class="card">
+              <div class="card-label">Total Unique Products</div>
+              <div class="card-value">${filteredProducts.length} items</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Total Units in Stock</div>
+              <div class="card-value">${totalQty.toLocaleString()} units</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Total Asset Cost Valuation</div>
+              <div class="card-value" style="color: #0284c7;">KES ${totalCostVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Est. Total Retail Value</div>
+              <div class="card-value" style="color: #16a34a;">KES ${totalRetailVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30px; text-align: center;">#</th>
+                <th style="width: 95px;">Barcode / SKU</th>
+                <th>Product Name</th>
+                <th style="width: 110px;">Category</th>
+                <th style="width: 80px; text-align: right;">Cost Price</th>
+                <th style="width: 80px; text-align: right;">Retail Price</th>
+                <th style="width: 55px; text-align: center;">Stock</th>
+                <th style="width: 95px; text-align: right;">Total Valuation</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+            <tfoot>
+              <tr style="background: #f1f5f9; font-weight: bold;">
+                <td colspan="6" style="text-align: right; padding: 8px;">GRAND TOTAL VALUATION:</td>
+                <td style="text-align: center; padding: 8px;">${totalQty.toLocaleString()}</td>
+                <td style="text-align: right; padding: 8px; color: #0284c7;">KES ${totalCostVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="footer">
+            <div>Lights POS ERP System &bull; Stock Audit Compliance Report</div>
+            <div>Manager Signature: _________________________ &nbsp;&nbsp;&nbsp;&nbsp; Date: _____________</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+  };
+
+  const handleMergeCategories = async () => {
+    if (!sourceCatId || !targetCatId) return;
+    const sourceCat = categories.find(c => String(c.id) === String(sourceCatId));
+    const targetCat = categories.find(c => String(c.id) === String(targetCatId));
+    if (!sourceCat || !targetCat) return;
+
+    const count = products.filter(p => p.category === sourceCat.id).length;
+    const confirmMsg = `Are you sure you want to merge "${sourceCat.name}" into "${targetCat.name}"?\n\nThis will reassign ${count} product(s) to "${targetCat.name}" and permanently delete "${sourceCat.name}".`;
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsMerging(true);
+    try {
+      const res = await api.mergeCategories(sourceCat.id, targetCat.id);
+      alert(res.message || "Categories merged successfully!");
+      if (onAddLog) onAddLog('CATEGORY_MERGE', `Merged category ${sourceCat.name} into ${targetCat.name}`);
+      setSourceCatId('');
+      setTargetCatId('');
+      await loadData();
+    } catch (err) {
+      alert(`Merge failed: ${err.message}`);
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      await api.createCategory(newCategoryName.trim());
+      setNewCategoryName('');
+      await loadData();
+    } catch (err) {
+      alert(`Failed to create category: ${err.message}`);
+    }
+  };
+
+  const handleSaveRenameCategory = async (catId) => {
+    if (!editingCatName.trim()) return;
+    try {
+      await api.updateCategory(catId, editingCatName.trim());
+      setEditingCatId(null);
+      await loadData();
+    } catch (err) {
+      alert(`Failed to rename category: ${err.message}`);
+    }
+  };
+
+  const handleDeleteCategory = async (cat) => {
+    const prodCount = products.filter(p => p.category === cat.id).length;
+    if (prodCount > 0) {
+      alert(`Cannot delete "${cat.name}" because it contains ${prodCount} product(s).\n\nPlease use the Merge tool above to reassign them to another category first.`);
+      return;
+    }
+    if (!window.confirm(`Delete empty category "${cat.name}"?`)) return;
+    try {
+      await api.deleteCategory(cat.id);
+      await loadData();
+    } catch (err) {
+      alert(`Failed to delete category: ${err.message}`);
+    }
+  };
+
   // Metrics calculations
   const totalStockVal = products.reduce((sum, p) => sum + (Number(p.cost_price) * p.stock_quantity), 0);
   const totalRetailVal = products.reduce((sum, p) => sum + (Number(p.retail_price) * p.stock_quantity), 0);
@@ -369,6 +579,16 @@ export default function InventoryModule({ onAddLog }) {
             ))}
           </select>
 
+          <button
+            type="button"
+            className="cyber-button"
+            style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}
+            onClick={() => setIsCategoryModalOpen(true)}
+            title="Manage and merge related categories"
+          >
+            <Tags size={14} /> Merge / Manage Categories
+          </button>
+
           {/* Quick Filter Buttons */}
           <div style={{ display: 'inline-flex', gap: '0.4rem', background: 'var(--bg-darker)', padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
             <button
@@ -408,7 +628,7 @@ export default function InventoryModule({ onAddLog }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button 
             type="button"
             className="cyber-button" 
@@ -416,7 +636,16 @@ export default function InventoryModule({ onAddLog }) {
             onClick={handleExportCSV}
             title="Download visible stock list as CSV / Excel"
           >
-            <Download size={14} /> Download Stock CSV
+            <Download size={14} /> Export CSV
+          </button>
+
+          <button 
+            type="button"
+            className="cyber-button btn-cyan" 
+            onClick={handlePrintPDF}
+            title="Download formatted Stock Valuation PDF"
+          >
+            <Printer size={14} /> Download Stock PDF
           </button>
 
           <button 
@@ -697,6 +926,218 @@ export default function InventoryModule({ onAddLog }) {
           </button>
         </form>
       </div>
+
+      {/* Category Management & Merge Modal */}
+      {isCategoryModalOpen && (
+        <div className="cyber-modal-overlay">
+          <div className="cyber-modal" style={{ maxWidth: '750px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="cyber-title" style={{ fontSize: '1.25rem' }}>
+                  <Tags size={20} /> Category Manager &amp; Merger
+                </h3>
+                <p className="cyber-subtitle">Merge duplicate categories, rename categories, or organize your catalog.</p>
+              </div>
+              <button 
+                type="button"
+                className="cyber-button" 
+                style={{ padding: '0.3rem 0.6rem' }} 
+                onClick={() => setIsCategoryModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Merge Tool Section */}
+            <div style={{ background: 'rgba(255, 170, 0, 0.06)', border: '1px solid var(--alert-orange)', borderRadius: '4px', padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Layers size={16} style={{ color: 'var(--alert-orange)' }} />
+                <strong style={{ color: 'var(--alert-orange)', fontSize: '0.95rem' }}>Merge Related Categories</strong>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Move all products from a duplicate/sub-category into another category, then automatically delete the duplicate. No products will be lost.
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'flex-end' }}>
+                <div>
+                  <label className="cyber-label" style={{ fontSize: '0.75rem' }}>Source Category (To remove)</label>
+                  <select 
+                    className="cyber-input"
+                    value={sourceCatId}
+                    onChange={(e) => setSourceCatId(e.target.value)}
+                  >
+                    <option value="">-- Choose Category to Absorb --</option>
+                    {categories.map(c => {
+                      const count = products.filter(p => p.category === c.id).length;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({count} products)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="cyber-label" style={{ fontSize: '0.75rem' }}>Target Category (To keep)</label>
+                  <select 
+                    className="cyber-input"
+                    value={targetCatId}
+                    onChange={(e) => setTargetCatId(e.target.value)}
+                  >
+                    <option value="">-- Choose Master Category --</option>
+                    {categories.filter(c => String(c.id) !== String(sourceCatId)).map(c => {
+                      const count = products.filter(p => p.category === c.id).length;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({count} products)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <button 
+                  type="button"
+                  className="cyber-button btn-orange"
+                  disabled={!sourceCatId || !targetCatId || isMerging}
+                  onClick={handleMergeCategories}
+                  style={{ height: '38px', whiteSpace: 'nowrap' }}
+                >
+                  {isMerging ? 'Merging...' : 'Merge Categories'}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Add Category */}
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', background: 'var(--bg-darker)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+              <div style={{ flex: 1 }}>
+                <label className="cyber-label" style={{ fontSize: '0.75rem' }}>Add New Category</label>
+                <input 
+                  type="text"
+                  className="cyber-input"
+                  placeholder="e.g. Solar Equipment"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                />
+              </div>
+              <button 
+                type="button" 
+                className="cyber-button btn-lime"
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim()}
+                style={{ height: '38px' }}
+              >
+                <Plus size={14} /> Add Category
+              </button>
+            </div>
+
+            {/* Category List with Counts and Actions */}
+            <div>
+              <label className="cyber-label" style={{ marginBottom: '0.5rem' }}>All Current Categories ({categories.length})</label>
+              <div className="cyber-table-container" style={{ background: 'var(--bg-darker)', maxHeight: '250px', overflowY: 'auto' }}>
+                <table className="cyber-table cyber-table-mono" style={{ fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Category Name</th>
+                      <th style={{ textAlign: 'center' }}>Total Products</th>
+                      <th style={{ width: '120px', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map(cat => {
+                      const prodCount = products.filter(p => p.category === cat.id).length;
+                      const isEditing = editingCatId === cat.id;
+                      return (
+                        <tr key={cat.id}>
+                          <td>
+                            {isEditing ? (
+                              <input 
+                                type="text"
+                                className="cyber-input"
+                                style={{ padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}
+                                value={editingCatName}
+                                onChange={(e) => setEditingCatName(e.target.value)}
+                                autoFocus
+                              />
+                            ) : (
+                              <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 500 }}>{cat.name}</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className="cyber-badge badge-cyan">{prodCount} item{prodCount === 1 ? '' : 's'}</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                              {isEditing ? (
+                                <>
+                                  <button 
+                                    type="button"
+                                    className="cyber-button btn-lime"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                    onClick={() => handleSaveRenameCategory(cat.id)}
+                                    title="Save name"
+                                  >
+                                    <Check size={12} />
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    className="cyber-button"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                    onClick={() => setEditingCatId(null)}
+                                    title="Cancel"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button 
+                                    type="button"
+                                    className="cyber-button"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                    onClick={() => {
+                                      setEditingCatId(cat.id);
+                                      setEditingCatName(cat.name);
+                                    }}
+                                    title="Rename category"
+                                  >
+                                    <Edit3 size={12} />
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    className="cyber-button btn-red"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                    onClick={() => handleDeleteCategory(cat)}
+                                    title={prodCount > 0 ? "Cannot delete category with products (merge first)" : "Delete empty category"}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button 
+                type="button"
+                className="cyber-button"
+                onClick={() => setIsCategoryModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auto-Reorder PO planner Modal */}
       {isReorderModalOpen && (
