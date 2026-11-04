@@ -162,6 +162,91 @@ class ProductViewSet(ShopFilterMixin, viewsets.ModelViewSet):
             return qs.filter(cost_price__lte=0)
         return qs
 
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def transfer_to_shop(self, request, pk=None):
+        source_product = self.get_object()
+        to_shop_id = request.data.get('to_shop_id')
+        try:
+            quantity = int(request.data.get('quantity', 0))
+        except (ValueError, TypeError):
+            quantity = 0
+        notes = request.data.get('notes', '')
+
+        if not to_shop_id:
+            return Response({'error': 'Destination shop (to_shop_id) is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity <= 0:
+            return Response({'error': 'Quantity must be a positive number.'}, status=status.HTTP_400_BAD_REQUEST)
+        if source_product.stock_quantity < quantity:
+            return Response({'error': f"Insufficient stock. Available: {source_product.stock_quantity}, requested: {quantity}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            to_shop = Shop.objects.get(id=to_shop_id)
+        except Shop.DoesNotExist:
+            return Response({'error': 'Destination shop not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if source_product.shop_id == to_shop.id:
+            return Response({'error': 'Cannot transfer to the same shop.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Deduct from source
+        source_prev = source_product.stock_quantity
+        source_product.stock_quantity -= quantity
+        source_product.save()
+
+        # 2. Add to destination
+        dest_product = Product.objects.filter(barcode=source_product.barcode, shop=to_shop).first()
+        if not dest_product:
+            dest_product = Product.objects.create(
+                shop=to_shop,
+                barcode=source_product.barcode,
+                name=source_product.name,
+                description=source_product.description,
+                category=source_product.category,
+                cost_price=source_product.cost_price,
+                retail_price=source_product.retail_price,
+                wholesale_price=source_product.wholesale_price,
+                stock_quantity=quantity,
+                serial_tracked=source_product.serial_tracked
+            )
+            dest_prev = 0
+        else:
+            dest_prev = dest_product.stock_quantity
+            dest_product.stock_quantity += quantity
+            dest_product.save()
+
+        # 3. Log Audit & Stock Adjustments
+        user = request.user if hasattr(request, 'user') and request.user.is_authenticated and hasattr(request.user, 'role') else StoreUser.objects.filter(role__in=['admin', 'manager']).first()
+        if user:
+            StockAdjustment.objects.create(
+                product=source_product,
+                shop=source_product.shop,
+                user=user,
+                previous_quantity=source_prev,
+                new_quantity=source_product.stock_quantity,
+                reason='correction',
+                notes=f"Inter-branch transfer OUT to {to_shop.name} ({quantity} units). {notes}"
+            )
+            StockAdjustment.objects.create(
+                product=dest_product,
+                shop=to_shop,
+                user=user,
+                previous_quantity=dest_prev,
+                new_quantity=dest_product.stock_quantity,
+                reason='correction',
+                notes=f"Inter-branch transfer IN from {getattr(source_product.shop, 'name', 'Branch')} ({quantity} units). {notes}"
+            )
+
+        AuditLog.objects.create(
+            action="STOCK_TRANSFER",
+            details=f"Transferred {quantity}x '{source_product.name}' (SKU: {source_product.barcode}) to {to_shop.name}"
+        )
+
+        return Response({
+            'message': f"Successfully transferred {quantity} units of '{source_product.name}' to {to_shop.name}.",
+            'source_stock': source_product.stock_quantity,
+            'dest_stock': dest_product.stock_quantity
+        })
+
     @action(detail=False, methods=['get'])
     def barcode(self, request):
         barcode = request.query_params.get('barcode')
@@ -299,6 +384,48 @@ class ShiftViewSet(ShopFilterMixin, viewsets.ModelViewSet):
             cashier=shift.cashier,
             details=f"Shift #{shift.id} closed. Expected KES {expected_cash}, Actual KES {actual_cash}, Variance KES {variance}"
         )
+
+        # Send Executive Shift Summary Email to Shop Alert Email
+        shop = getattr(shift, 'shop', None)
+        if shop and shop.alert_email:
+            def _send_shift_close_summary():
+                try:
+                    all_sales = Sale.objects.filter(shift=shift, status='completed')
+                    gross_sales = all_sales.aggregate(total=Sum('total'))['total'] or decimal.Decimal('0.00')
+                    mpesa_sales = all_sales.filter(payment_method__iexact='M-Pesa').aggregate(total=Sum('total'))['total'] or decimal.Decimal('0.00')
+                    card_sales = all_sales.filter(payment_method__iexact='Card').aggregate(total=Sum('total'))['total'] or decimal.Decimal('0.00')
+                    credit_sales = all_sales.filter(payment_method__iexact='Credit').aggregate(total=Sum('total'))['total'] or decimal.Decimal('0.00')
+
+                    subject = f"SHIFT CLOSE REPORT - {shop.name} (Shift #{shift.id})"
+                    body = (
+                        f"EXECUTIVE SHIFT CLOSE SUMMARY\n"
+                        f"==============================\n"
+                        f"Store: {shop.name}\n"
+                        f"Shift #: {shift.id}\n"
+                        f"Cashier: {shift.cashier.name if shift.cashier else 'N/A'}\n"
+                        f"Opened: {shift.open_time.strftime('%Y-%m-%d %H:%M')}\n"
+                        f"Closed: {shift.close_time.strftime('%Y-%m-%d %H:%M')}\n\n"
+                        f"FINANCIAL REVENUE BREAKDOWN:\n"
+                        f"----------------------------\n"
+                        f"• Gross POS Sales:   KES {gross_sales:,.2f}\n"
+                        f"• Cash Collected:    KES {cash_sales:,.2f}\n"
+                        f"• M-Pesa Collected:  KES {mpesa_sales:,.2f}\n"
+                        f"• Card Payments:     KES {card_sales:,.2f}\n"
+                        f"• Store Credit:      KES {credit_sales:,.2f}\n\n"
+                        f"CASH DRAWER AUDIT:\n"
+                        f"------------------\n"
+                        f"• Starting Float:    KES {shift.starting_cash:,.2f}\n"
+                        f"• Petty Expenses:    KES {total_expenses:,.2f}\n"
+                        f"• Expected Cash:     KES {expected_cash:,.2f}\n"
+                        f"• Actual Cash:       KES {actual_cash:,.2f}\n"
+                        f"• Variance / Drift:  KES {variance:,.2f} ({'OVERAGE' if variance > 0 else 'SHORTAGE' if variance < 0 else 'EXACT'})\n\n"
+                        f"Total Completed Transactions: {all_sales.count()}\n\n"
+                        f"Lights POS ERP Automated Notification"
+                    )
+                    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [shop.alert_email], fail_silently=True)
+                except Exception as e:
+                    pass
+            threading.Thread(target=_send_shift_close_summary, daemon=True).start()
         
         return Response(self.get_serializer(shift).data)
 
@@ -306,8 +433,61 @@ class ShiftViewSet(ShopFilterMixin, viewsets.ModelViewSet):
 class SaleViewSet(ShopFilterMixin, viewsets.ModelViewSet):
     queryset = Sale.objects.all().order_by('-timestamp')
     serializer_class = SaleSerializer
-    filterset_fields = ['shift', 'payment_method']
+    filterset_fields = ['shift', 'payment_method', 'status']
     search_fields = ['id', 'payment_reference', 'customer__name']
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def convert_quotation(self, request, pk=None):
+        sale = self.get_object()
+        if sale.status != 'quotation':
+            return Response({'error': f'Sale #{sale.id} is already {sale.status}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify stock for all items
+        for item in sale.items.all():
+            product = item.product
+            if product.stock_quantity < item.quantity:
+                return Response({'error': f"Insufficient stock for '{product.name}'. Available: {product.stock_quantity}, Needed: {item.quantity}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Deduct stock
+        for item in sale.items.all():
+            product = item.product
+            product.stock_quantity -= item.quantity
+            product.save()
+            shop = getattr(sale, 'shop', None)
+            if shop:
+                check_and_send_low_stock_alert(product, shop)
+
+        # Update payment method and complete status
+        payment_method = request.data.get('payment_method', sale.payment_method)
+        if payment_method == 'Quotation':
+            payment_method = 'Cash'
+        sale.payment_method = payment_method
+        sale.status = 'completed'
+
+        # Generate mock eTIMS if missing
+        if not sale.etims_invoice_number:
+            import random, string
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            sale.etims_invoice_number = f"KRA-ETIMS-INV-{timezone.now().strftime('%Y%m%d')}-{sale.id:04d}-{random_suffix}"
+            sale.etims_signature = f"TIMS-SIG-{sale.total}-{sale.timestamp.timestamp():.0f}"
+            sale.etims_qr_code_data = f"https://www.kra.go.ke/etims/verify?inv={sale.etims_invoice_number}"
+
+        sale.save()
+
+        # Handle Credit ledger if payment is Credit
+        if payment_method == 'Credit' and sale.customer:
+            CustomerDebtLedger.objects.create(
+                customer=sale.customer,
+                sale=sale,
+                amount=sale.total,
+                transaction_type='charge',
+                notes=f"Converted Quotation #{sale.id} to Credit Purchase"
+            )
+            sale.customer.outstanding_debt += sale.total
+            sale.customer.save()
+
+        return Response(SaleSerializer(sale).data)
     
     def destroy(self, request, *args, **kwargs):
         from django.db.models import ProtectedError

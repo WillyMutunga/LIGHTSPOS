@@ -16,6 +16,72 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchInput, setCustomerSearchInput] = useState('');
   const [pricingMode, setPricingMode] = useState('Retail');
+  const [payDebtModalCustomer, setPayDebtModalCustomer] = useState(null);
+  const [payDebtAmount, setPayDebtAmount] = useState('');
+  const [payDebtNotes, setPayDebtNotes] = useState('');
+  const [isPayingDebt, setIsPayingDebt] = useState(false);
+
+  const changePricingMode = (mode) => {
+    setPricingMode(mode);
+    setCart(prevCart => prevCart.map(item => {
+      const price = mode === 'Wholesale' && Number(item.product.wholesale_price) > 0 
+        ? Number(item.product.wholesale_price) 
+        : Number(item.product.retail_price);
+      return {
+        ...item,
+        unit_price: price,
+        total_price: item.quantity * price
+      };
+    }));
+  };
+
+  const handleSendWhatsAppReceipt = (phone) => {
+    if (!activeReceipt) return;
+    const targetPhone = phone || (selectedCustomer?.phone) || window.prompt("Enter customer WhatsApp number (e.g. 0712345678):");
+    if (!targetPhone) return;
+
+    let cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '254' + cleanPhone.slice(1);
+    } else if (cleanPhone.startsWith('+')) {
+      cleanPhone = cleanPhone.slice(1);
+    }
+
+    const itemsList = (activeReceipt.items || []).map(i => `• ${i.product_name || i.product?.name || 'Item'} x ${i.quantity} = KES ${Number(i.total_price).toLocaleString()}`).join('\n');
+    
+    const text = `*LIGHTS ELECTRICALS - E-RECEIPT*\n` +
+      `Receipt #: *${activeReceipt.id}*\n` +
+      `Date: ${new Date(activeReceipt.timestamp).toLocaleDateString()} ${new Date(activeReceipt.timestamp).toLocaleTimeString()}\n` +
+      `Cashier: ${activeReceipt.cashier_name || ''}\n` +
+      `Payment Method: ${activeReceipt.payment_method}\n\n` +
+      `*Purchased Items:*\n${itemsList}\n\n` +
+      `*Total Paid: KES ${Number(activeReceipt.total).toLocaleString()}*\n` +
+      (activeReceipt.etims_invoice_number ? `KRA eTIMS: ${activeReceipt.etims_invoice_number}\n` : '') +
+      `\n_Thank you for choosing Lights Electricals! Keep this message for your warranty records._`;
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleQuickDebtPayment = async (e) => {
+    e.preventDefault();
+    if (!payDebtModalCustomer || !payDebtAmount || Number(payDebtAmount) <= 0) return;
+    setIsPayingDebt(true);
+    try {
+      await api.payCustomerDebt(payDebtModalCustomer.id, payDebtAmount, payDebtNotes || 'Direct POS debt paydown');
+      alert(`Successfully received payment of KES ${Number(payDebtAmount).toLocaleString()} from ${payDebtModalCustomer.name}`);
+      const updatedCustomers = await api.getCustomers();
+      setCustomers(updatedCustomers);
+      const updatedSelected = updatedCustomers.find(c => c.id === payDebtModalCustomer.id);
+      if (updatedSelected) setSelectedCustomer(updatedSelected);
+      setPayDebtModalCustomer(null);
+      setPayDebtAmount('');
+      setPayDebtNotes('');
+    } catch (err) {
+      alert(`Payment failed: ${err.message}`);
+    } finally {
+      setIsPayingDebt(false);
+    }
+  };
   const [mixedCashAmount, setMixedCashAmount] = useState('');
   const [mixedMpesaAmount, setMixedMpesaAmount] = useState('');
   const [discountValue, setDiscountValue] = useState(0);
@@ -390,15 +456,17 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
           <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-muted)' }}>
             <button
               type="button"
-              onClick={() => setPricingMode('Retail')}
+              onClick={() => changePricingMode('Retail')}
               style={{ padding: '0.5rem 1rem', background: pricingMode === 'Retail' ? 'var(--accent-lime)' : 'transparent', color: pricingMode === 'Retail' ? '#000' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontWeight: pricingMode === 'Retail' ? 'bold' : 'normal' }}
+              title="Retail pricing"
             >
               Retail
             </button>
             <button
               type="button"
-              onClick={() => setPricingMode('Wholesale')}
+              onClick={() => changePricingMode('Wholesale')}
               style={{ padding: '0.5rem 1rem', background: pricingMode === 'Wholesale' ? 'var(--accent-cyan)' : 'transparent', color: pricingMode === 'Wholesale' ? '#000' : 'var(--text-muted)', border: 'none', cursor: 'pointer', fontWeight: pricingMode === 'Wholesale' ? 'bold' : 'normal' }}
+              title="Contractor / Wholesale bulk pricing"
             >
               Wholesale
             </button>
@@ -596,6 +664,26 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
                 ))}
               </datalist>
             </div>
+
+            {selectedCustomer && Number(selectedCustomer.outstanding_debt) > 0 && (
+              <div style={{ background: 'rgba(255, 51, 51, 0.1)', border: '1px solid #FF3333', padding: '0.6rem 0.8rem', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#ff8888', display: 'block', fontWeight: 'bold' }}>CUSTOMER DEBT ALERT:</span>
+                  <strong style={{ color: '#FF3333', fontSize: '1rem' }}>KES {Number(selectedCustomer.outstanding_debt).toLocaleString()}</strong>
+                </div>
+                <button
+                  type="button"
+                  className="cyber-button btn-orange"
+                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderColor: '#FF3333', color: '#FF3333' }}
+                  onClick={() => {
+                    setPayDebtModalCustomer(selectedCustomer);
+                    setPayDebtAmount(selectedCustomer.outstanding_debt);
+                  }}
+                >
+                  Pay Debt
+                </button>
+              </div>
+            )}
             
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
               <div style={{ flex: 1, display: 'flex' }}>
@@ -1035,17 +1123,91 @@ export default function POSModule({ activeShift, currentUser, onAddLog }) {
             
             </div> {/* End scrollable area */}
             
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDDDD' }}>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #DDDDDD', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button 
                 type="button"
-                className="cyber-button btn-orange" 
-                style={{ background: '#111111', color: '#FFFFFF', borderColor: '#111111', width: '100%', justifyContent: 'center', padding: '0.75rem' }}
+                className="cyber-button"
+                style={{ background: '#25D366', color: '#FFFFFF', borderColor: '#25D366', flex: 1, justifyContent: 'center', padding: '0.65rem 0.5rem', fontWeight: 'bold', fontSize: '0.82rem' }}
+                onClick={() => handleSendWhatsAppReceipt()}
+                title="Send receipt to customer via WhatsApp"
+              >
+                📱 Send via WhatsApp
+              </button>
+              <button 
+                type="button"
+                className="cyber-button" 
+                style={{ background: '#0284c7', color: '#FFFFFF', borderColor: '#0284c7', flex: 1, justifyContent: 'center', padding: '0.65rem 0.5rem', fontSize: '0.82rem' }}
+                onClick={() => window.print()}
+              >
+                🖨️ Print
+              </button>
+              <button 
+                type="button"
+                className="cyber-button" 
+                style={{ background: '#111111', color: '#FFFFFF', borderColor: '#111111', flex: 1, justifyContent: 'center', padding: '0.65rem 0.5rem', fontSize: '0.82rem' }}
                 onClick={() => setActiveReceipt(null)}
               >
-                Close Receipt [Esc]
+                Close [Esc]
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Quick Debt Payment Modal */}
+      {payDebtModalCustomer && (
+        <div className="cyber-modal-overlay" style={{ zIndex: 120 }}>
+          <div className="cyber-modal" style={{ maxWidth: '420px' }}>
+            <h3 className="cyber-title" style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Receive Customer Debt Payment</h3>
+            <p className="cyber-subtitle" style={{ marginBottom: '1.25rem' }}>
+              Customer: <strong>{payDebtModalCustomer.name}</strong> ({payDebtModalCustomer.phone})<br/>
+              Total Balance: <strong style={{ color: 'var(--alert-orange)' }}>KES {Number(payDebtModalCustomer.outstanding_debt).toLocaleString()}</strong>
+            </p>
+            
+            <form onSubmit={handleQuickDebtPayment} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="cyber-label">Payment Amount (KES)</label>
+                <input 
+                  type="number" 
+                  className="cyber-input cyber-input-mono"
+                  required
+                  min="1"
+                  step="0.01"
+                  value={payDebtAmount}
+                  onChange={(e) => setPayDebtAmount(e.target.value)}
+                  placeholder="e.g. 5000"
+                />
+              </div>
+
+              <div>
+                <label className="cyber-label">Reference Notes (Optional)</label>
+                <input 
+                  type="text" 
+                  className="cyber-input"
+                  placeholder="e.g. Cash at till, M-Pesa Ref QBD123..."
+                  value={payDebtNotes}
+                  onChange={(e) => setPayDebtNotes(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button 
+                  type="button" 
+                  className="cyber-button"
+                  onClick={() => setPayDebtModalCustomer(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="cyber-button btn-lime"
+                  disabled={isPayingDebt || !payDebtAmount}
+                >
+                  {isPayingDebt ? 'Processing...' : 'Confirm Payment'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

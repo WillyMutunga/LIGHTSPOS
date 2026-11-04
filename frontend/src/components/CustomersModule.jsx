@@ -179,14 +179,30 @@ export default function CustomersModule({ onAddLog }) {
                   </td>
                   <td style={{ textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     {cust.phone !== '0000000000' ? (
-                      <button 
-                        className="cyber-button btn-cyan" 
-                        style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
-                        onClick={() => openLedger(cust)}
-                        title="Audit Debt Ledger"
-                      >
-                        <BookOpen size={12} /> Audit Debt
-                      </button>
+                      <>
+                        {Number(cust.outstanding_debt) > 0 && (
+                          <button 
+                            className="cyber-button btn-lime" 
+                            style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                            onClick={() => {
+                              setSelectedLedgerCustomer(cust);
+                              setPayAmount(cust.outstanding_debt);
+                              setIsPaymentModalOpen(true);
+                            }}
+                            title="Record payment against outstanding balance"
+                          >
+                            <DollarSign size={12} /> Pay Debt
+                          </button>
+                        )}
+                        <button 
+                          className="cyber-button btn-cyan" 
+                          style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                          onClick={() => openLedger(cust)}
+                          title="Audit Debt Ledger"
+                        >
+                          <BookOpen size={12} /> Audit Debt
+                        </button>
+                      </>
                     ) : <span style={{ padding: '0.2rem 0.6rem' }}>—</span>}
                     {cust.phone !== '0000000000' && (
                       <button

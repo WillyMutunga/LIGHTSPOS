@@ -126,6 +126,10 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(product)
   }),
+  transferProductStock: (productId, toShopId, quantity, notes = '') => request(`/products/${productId}/transfer_to_shop/`, {
+    method: 'POST',
+    body: JSON.stringify({ to_shop_id: toShopId, quantity, notes })
+  }),
 
   // Customers
   getCustomers: async (search = '') => {
@@ -188,6 +192,10 @@ export const api = {
   // Sales
   getSales: () => request('/sales/'),
   deleteSale: (id) => request(`/sales/${id}/`, { method: 'DELETE' }),
+  convertQuotation: (id, paymentMethod = 'Cash') => request(`/sales/${id}/convert_quotation/`, {
+    method: 'POST',
+    body: JSON.stringify({ payment_method: paymentMethod })
+  }),
   checkout: async (checkoutData) => {
     try {
       return await request('/sales/checkout/', {

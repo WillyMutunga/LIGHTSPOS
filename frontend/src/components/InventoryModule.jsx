@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer, Trash2, Download, Filter } from 'lucide-react';
+import { Plus, Edit3, ShieldAlert, Archive, Tags, Layers, Save, Check, X, Printer, Trash2, Download, Filter, ArrowRightLeft } from 'lucide-react';
 import Barcode from 'react-barcode';
 
 export default function InventoryModule({ onAddLog }) {
@@ -49,6 +49,49 @@ export default function InventoryModule({ onAddLog }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCatId, setEditingCatId] = useState(null);
   const [editingCatName, setEditingCatName] = useState('');
+
+  // Branch Stock Transfer states
+  const [shops, setShops] = useState([]);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferProdId, setTransferProdId] = useState('');
+  const [transferToShopId, setTransferToShopId] = useState('');
+  const [transferQty, setTransferQty] = useState('');
+  const [transferNotes, setTransferNotes] = useState('');
+  const [transferMaxStock, setTransferMaxStock] = useState(0);
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const openTransferModal = (prod = null) => {
+    if (prod) {
+      setTransferProdId(prod.id);
+      setTransferMaxStock(prod.stock_quantity);
+    } else {
+      setTransferProdId(products[0]?.id || '');
+      setTransferMaxStock(products[0]?.stock_quantity || 0);
+    }
+    setTransferQty('');
+    setTransferNotes('');
+    const currentShopId = localStorage.getItem('activeShopId') || '1';
+    const otherShop = shops.find(s => String(s.id) !== String(currentShopId));
+    setTransferToShopId(otherShop ? otherShop.id : '');
+    setIsTransferModalOpen(true);
+  };
+
+  const handleExecuteTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferProdId || !transferToShopId || Number(transferQty) <= 0) return;
+    setIsTransferring(true);
+    try {
+      const res = await api.transferProductStock(transferProdId, transferToShopId, Number(transferQty), transferNotes);
+      alert(res.message || "Branch transfer completed successfully!");
+      if (onAddLog) onAddLog('STOCK_TRANSFER', `Transferred ${transferQty} units of product #${transferProdId} to shop #${transferToShopId}`);
+      setIsTransferModalOpen(false);
+      await loadData();
+    } catch (err) {
+      alert(`Transfer failed: ${err.message}`);
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   const openReorderModal = async () => {
     try {
@@ -121,6 +164,10 @@ export default function InventoryModule({ onAddLog }) {
       setProducts(prodRes);
       const catRes = await api.getCategories();
       setCategories(catRes);
+      try {
+        const shopsRes = await api.getShops();
+        setShops(shopsRes);
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     }
@@ -650,6 +697,16 @@ export default function InventoryModule({ onAddLog }) {
 
           <button 
             type="button"
+            className="cyber-button" 
+            style={{ borderColor: 'var(--accent-cyan)' }}
+            onClick={() => openTransferModal()}
+            title="Transfer stock to another branch"
+          >
+            <ArrowRightLeft size={14} /> Branch Transfer
+          </button>
+
+          <button 
+            type="button"
             className="cyber-button btn-lime" 
             onClick={() => openDrawer()}
           >
@@ -723,6 +780,15 @@ export default function InventoryModule({ onAddLog }) {
                           <Printer size={12} />
                         </button>
                       )}
+                      <button 
+                        type="button"
+                        className="cyber-button" 
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' }}
+                        onClick={() => openTransferModal(prod)}
+                        title="Transfer stock to another branch"
+                      >
+                        <ArrowRightLeft size={12} />
+                      </button>
                       <button 
                         className="cyber-button btn-red"
                         style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
@@ -926,6 +992,114 @@ export default function InventoryModule({ onAddLog }) {
           </button>
         </form>
       </div>
+
+      {/* Inter-Branch Stock Transfer Modal */}
+      {isTransferModalOpen && (
+        <div className="cyber-modal-overlay">
+          <div className="cyber-modal" style={{ maxWidth: '550px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="cyber-title" style={{ fontSize: '1.25rem' }}>
+                  <ArrowRightLeft size={20} /> Inter-Branch Stock Transfer
+                </h3>
+                <p className="cyber-subtitle">Dispatch inventory units to another branch store in real-time.</p>
+              </div>
+              <button 
+                type="button" 
+                className="cyber-button" 
+                style={{ padding: '0.3rem 0.6rem' }} 
+                onClick={() => setIsTransferModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="cyber-label">Select Product to Transfer</label>
+                <select 
+                  className="cyber-input"
+                  required
+                  value={transferProdId}
+                  onChange={(e) => {
+                    setTransferProdId(e.target.value);
+                    const p = products.find(prod => String(prod.id) === e.target.value);
+                    if (p) setTransferMaxStock(p.stock_quantity);
+                  }}
+                >
+                  <option value="">-- Choose Product --</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (SKU: {p.barcode}) - Current Stock: {p.stock_quantity}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="cyber-label">Destination Branch</label>
+                  <select 
+                    className="cyber-input"
+                    required
+                    value={transferToShopId}
+                    onChange={(e) => setTransferToShopId(e.target.value)}
+                  >
+                    <option value="">-- Choose Branch --</option>
+                    {shops.filter(s => String(s.id) !== String(localStorage.getItem('activeShopId') || '1')).map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="cyber-label">Quantity to Transfer (Max: {transferMaxStock})</label>
+                  <input 
+                    type="number"
+                    className="cyber-input cyber-input-mono"
+                    required
+                    min="1"
+                    max={transferMaxStock > 0 ? transferMaxStock : undefined}
+                    value={transferQty}
+                    onChange={(e) => setTransferQty(e.target.value)}
+                    placeholder="e.g. 5"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="cyber-label">Transfer Purpose / Notes</label>
+                <input 
+                  type="text"
+                  className="cyber-input"
+                  placeholder="e.g. Branch restock for contractor project"
+                  value={transferNotes}
+                  onChange={(e) => setTransferNotes(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button 
+                  type="button" 
+                  className="cyber-button" 
+                  onClick={() => setIsTransferModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="cyber-button btn-lime"
+                  disabled={isTransferring || !transferProdId || !transferToShopId || Number(transferQty) <= 0 || Number(transferQty) > transferMaxStock}
+                >
+                  {isTransferring ? 'Transferring...' : 'Execute Branch Transfer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Category Management & Merge Modal */}
       {isCategoryModalOpen && (

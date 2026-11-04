@@ -30,6 +30,44 @@ export default function SalesHistoryModule({ currentUser }) {
   const [selectedSale, setSelectedSale] = useState(null);
   const [selectedSales, setSelectedSales] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'completed', 'quotation'
+  const [isConverting, setIsConverting] = useState(false);
+
+  const handleConvertQuotation = async (saleId) => {
+    const paymentMethod = window.prompt("Choose Payment Method (Cash, M-Pesa, Card, Credit):", "Cash");
+    if (!paymentMethod) return;
+    setIsConverting(true);
+    try {
+      const updated = await api.convertQuotation(saleId, paymentMethod.trim());
+      alert(`Successfully converted Quote #${saleId} to Completed Sale!`);
+      setSelectedSale(updated);
+      await loadSales();
+    } catch (err) {
+      alert(`Conversion failed: ${err.message}`);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleSendWhatsAppQuote = (sale) => {
+    if (!sale) return;
+    const phone = window.prompt("Enter customer WhatsApp number (e.g. 0712345678):");
+    if (!phone) return;
+    let cleanPhone = phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.slice(1);
+    else if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.slice(1);
+
+    const itemsList = (sale.items || []).map(i => `• ${i.product_name} x ${i.quantity} = KES ${Number(i.total_price).toLocaleString()}`).join('\n');
+    const text = `*LIGHTS ELECTRICALS - OFFICIAL QUOTATION*\n` +
+      `Quote Ref: *#${sale.id}*\n` +
+      `Date: ${new Date(sale.timestamp).toLocaleDateString()}\n` +
+      `Prepared For: ${sale.customer_name || 'Valued Customer'}\n\n` +
+      `*Quoted Items:*\n${itemsList}\n\n` +
+      `*Total Estimated: KES ${Number(sale.total).toLocaleString()} (VAT Incl.)*\n` +
+      `_Validity: 14 Days from issuance. Thank you for your inquiry!_`;
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
 
   useEffect(() => {
     loadSales();
@@ -86,6 +124,10 @@ export default function SalesHistoryModule({ currentUser }) {
   };
 
   const filteredSales = sales.filter(s => {
+    if (statusFilter !== 'all') {
+      const saleStatus = s.status || 'completed';
+      if (saleStatus !== statusFilter) return false;
+    }
     const term = search.toLowerCase();
     return s.id.toString().includes(term) || 
            s.payment_method.toLowerCase().includes(term) ||
@@ -103,7 +145,35 @@ export default function SalesHistoryModule({ currentUser }) {
           <p className="cyber-subtitle">Review previous cash desk receipts and transaction details.</p>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Status Tabs */}
+          <div style={{ display: 'inline-flex', gap: '0.4rem', background: 'var(--bg-darker)', padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+            <button
+              type="button"
+              className={`cyber-button ${statusFilter === 'all' ? 'btn-lime' : ''}`}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => setStatusFilter('all')}
+            >
+              All ({sales.length})
+            </button>
+            <button
+              type="button"
+              className={`cyber-button ${statusFilter === 'completed' ? 'btn-lime' : ''}`}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => setStatusFilter('completed')}
+            >
+              Paid Sales ({sales.filter(s => (s.status || 'completed') === 'completed').length})
+            </button>
+            <button
+              type="button"
+              className={`cyber-button ${statusFilter === 'quotation' ? 'btn-cyan' : ''}`}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+              onClick={() => setStatusFilter('quotation')}
+            >
+              📋 Quotes / Proforma ({sales.filter(s => s.status === 'quotation').length})
+            </button>
+          </div>
+
           {currentUser.role !== 'cashier' && selectedSales.length > 0 && (
             <button 
               className="cyber-button btn-orange" 
@@ -116,7 +186,7 @@ export default function SalesHistoryModule({ currentUser }) {
           <input 
             type="text" 
             className="cyber-input"
-            style={{ width: '250px' }}
+            style={{ width: '220px' }}
             placeholder="Search transactions..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -143,9 +213,10 @@ export default function SalesHistoryModule({ currentUser }) {
               <th>Timestamp</th>
               <th>Customer</th>
               <th>Cashier</th>
+              <th style={{ textAlign: 'center' }}>Type</th>
               <th style={{ textAlign: 'right' }}>Total amount</th>
               <th style={{ textAlign: 'center' }}>Payment Mode</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Receipt</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               {currentUser.role !== 'cashier' && <th style={{ width: '40px', textAlign: 'center' }}>Action</th>}
             </tr>
           </thead>
@@ -173,6 +244,13 @@ export default function SalesHistoryModule({ currentUser }) {
                   <td>{new Date(sale.timestamp).toLocaleString()}</td>
                   <td style={{ fontFamily: 'var(--font-sans)', fontWeight: 500 }}>{sale.customer_name || 'Walk-in'}</td>
                   <td style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-muted)' }}>{sale.cashier_name}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {sale.status === 'quotation' ? (
+                      <span className="cyber-badge badge-orange" style={{ fontSize: '0.7rem' }}>QUOTE</span>
+                    ) : (
+                      <span className="cyber-badge badge-lime" style={{ fontSize: '0.7rem' }}>PAID</span>
+                    )}
+                  </td>
                   <td style={{ textAlign: 'right' }}>KES {Number(sale.total).toLocaleString()}</td>
                   <td style={{ textAlign: 'center' }}>
                     <span className="cyber-badge badge-cyan" style={{ fontSize: '0.75rem' }}>{sale.payment_method}</span>
@@ -309,14 +387,50 @@ export default function SalesHistoryModule({ currentUser }) {
                 <p>Goods once sold are not returnable</p>
                 <p>unless found defective within 7 days.</p>
                 
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-                  <button 
-                    className="cyber-button no-print"
-                    style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
-                    onClick={() => window.print()}
-                  >
-                    <Printer size={14} /> Print
-                  </button>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                  {selectedSale.status === 'quotation' ? (
+                    <>
+                      <button 
+                        className="cyber-button btn-lime no-print"
+                        style={{ flex: 2, justifyContent: 'center', fontWeight: 'bold' }}
+                        disabled={isConverting}
+                        onClick={() => handleConvertQuotation(selectedSale.id)}
+                      >
+                        {isConverting ? 'Converting...' : '✓ Convert to Completed Sale'}
+                      </button>
+                      <button 
+                        className="cyber-button no-print"
+                        style={{ flex: 1, background: '#25D366', color: '#FFFFFF', borderColor: '#25D366', justifyContent: 'center' }}
+                        onClick={() => handleSendWhatsAppQuote(selectedSale)}
+                      >
+                        📱 WhatsApp
+                      </button>
+                      <button 
+                        className="cyber-button no-print"
+                        style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
+                        onClick={() => window.print()}
+                      >
+                        <Printer size={14} /> Print Quote
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        className="cyber-button no-print"
+                        style={{ flex: 1, background: '#25D366', color: '#FFFFFF', borderColor: '#25D366', justifyContent: 'center' }}
+                        onClick={() => handleSendWhatsAppQuote(selectedSale)}
+                      >
+                        📱 Send WhatsApp
+                      </button>
+                      <button 
+                        className="cyber-button no-print"
+                        style={{ flex: 1, background: '#EEEEEE', color: '#111111', borderColor: '#CCCCCC', justifyContent: 'center' }}
+                        onClick={() => window.print()}
+                      >
+                        <Printer size={14} /> Print Receipt
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div> {/* End scrollable area */}
